@@ -27,12 +27,19 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   useEffect(() => {
-    const unsubscribe = storageService.subscribeToCulto((updatedCulto) => {
+    const unsubscribeCulto = storageService.subscribeToCulto((updatedCulto) => {
       setCultoAtivo(updatedCulto);
       setHistoricoCultos(storageService.getHistoricoCultos());
     });
 
-    return () => unsubscribe();
+    const unsubscribeHistorico = storageService.subscribeToHistoricoCultos((updatedHistorico) => {
+      setHistoricoCultos(updatedHistorico);
+    });
+
+    return () => {
+      unsubscribeCulto();
+      unsubscribeHistorico();
+    };
   }, []);
 
   const isDirigente = Boolean(

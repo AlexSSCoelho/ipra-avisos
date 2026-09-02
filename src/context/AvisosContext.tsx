@@ -110,6 +110,8 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const marcarComoAnunciado = (id: string) => {
+    // Operação estritamente bloqueada quando não há culto em andamento (inclusive para admin)
+    if (!isCultoEmAndamento) return;
     // Apenas o dirigente ou administrador pode marcar como anunciado
     if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
@@ -127,6 +129,8 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const desmarcarComoAnunciado = (id: string) => {
+    // Operação estritamente bloqueada quando não há culto em andamento (inclusive para admin)
+    if (!isCultoEmAndamento) return;
     // Apenas o dirigente ou administrador pode desmarcar
     if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
@@ -138,9 +142,9 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const excluirAviso = (id: string): { success: boolean; message?: string } => {
-    // Não permite operações da sessão ativa se o culto já estiver finalizado (salvo admin)
-    if (!isCultoEmAndamento && !isAdmin) {
-      return { success: false, message: 'Não é possível cancelar avisos de um culto encerrado.' };
+    // Não permite operações da sessão ativa se o culto já estiver finalizado (inclusive para admin)
+    if (!isCultoEmAndamento) {
+      return { success: false, message: 'Não é possível cancelar avisos: não há culto em andamento no momento.' };
     }
 
     const aviso = avisos.find((a) => a.id === id);
@@ -163,9 +167,9 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const editarAviso = (id: string, params: EditAvisoParams): { success: boolean; message?: string } => {
-    // Não permite editar avisos como sessão ativa se o culto estiver finalizado (salvo admin)
-    if (!isCultoEmAndamento && !isAdmin) {
-      return { success: false, message: 'Não é possível editar avisos de um culto encerrado.' };
+    // Não permite editar avisos como sessão ativa se o culto estiver finalizado (inclusive para admin)
+    if (!isCultoEmAndamento) {
+      return { success: false, message: 'Não é possível editar avisos: não há culto em andamento no momento.' };
     }
 
     const aviso = avisos.find((a) => a.id === id);

@@ -33,6 +33,7 @@ class StorageService {
   private channel: BroadcastChannel | null = null;
   private avisoListeners = new Set<(avisos: AvisoItem[]) => void>();
   private cultoListeners = new Set<(culto: CultoAtivo | null) => void>();
+  private historicoListeners = new Set<(historico: CultoAtivo[]) => void>();
   private obreiroListeners = new Set<(obreiros: Obreiro[]) => void>();
 
   constructor() {
@@ -272,6 +273,8 @@ class StorageService {
 
   public saveHistoricoCultos(cultos: CultoAtivo[]) {
     localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(cultos));
+    this.historicoListeners.forEach((cb) => cb(cultos));
+    this.broadcast('HISTORICO_UPDATED', cultos);
   }
 
   // Troca o dirigente de um culto existente. NÃO cria culto novo.
@@ -518,8 +521,29 @@ class StorageService {
               const localMap = new Map<string, CultoAtivo>(localList.map((c) => [c.id, c]));
 
               for (const rc of remoteCultos) {
-                if (!localMap.has(rc.id)) {
+                const local = localMap.get(rc.id);
+                if (!local) {
+                  // Sessão remota nova (preserva também qualquer sessão local que ainda não esteja na nuvem)
                   localMap.set(rc.id, rc);
+                } else {
+                  // O documento remoto real de cultos/{cultoId} é autoritativo sobre placeholder ou metadado incompleto
+                  const isLocalPlaceholder =
+                    local.nomeCulto === 'Sessão Anterior (Sem metadados cadastrados)' ||
+                    local.dirigenteNome === 'Não informado' ||
+                    !local.dirigenteNome ||
+                    !local.horarioInicio;
+
+                  const isRemoteReal =
+                    rc.nomeCulto !== 'Sessão Anterior (Sem metadados cadastrados)' &&
+                    rc.dirigenteNome !== 'Não informado' &&
+                    Boolean(rc.dirigenteNome);
+
+                  if (isLocalPlaceholder || isRemoteReal) {
+                    localMap.set(rc.id, {
+                      ...local,
+                      ...rc,
+                    });
+                  }
                 }
               }
 
@@ -529,7 +553,7 @@ class StorageService {
                 if (b.status === 'em_andamento' && a.status !== 'em_andamento') return 1;
                 return (b.data || '').localeCompare(a.data || '') || b.id.localeCompare(a.id);
               });
-              localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(merged));
+              this.saveHistoricoCultos(merged);
             } catch {
               // Ignore
             }
@@ -565,6 +589,37 @@ class StorageService {
       this.cultoListeners.delete(callback);
       if (unsubAtivo) unsubAtivo();
       if (unsubColecao) unsubColecao();
+      if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }
+
+  public subscribeToHistoricoCultos(callback: (historico: CultoAtivo[]) => void): () => void {
+    this.historicoListeners.add(callback);
+
+    const handleBroadcast = (event: MessageEvent) => {
+      if (event.data?.type === 'HISTORICO_UPDATED') {
+        callback(event.data.payload);
+      }
+    };
+
+    if (this.channel) {
+      this.channel.addEventListener('message', handleBroadcast);
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEYS.HISTORICO_CULTOS && event.newValue) {
+        try {
+          callback(JSON.parse(event.newValue));
+        } catch {
+          // Ignore
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      this.historicoListeners.delete(callback);
       if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
       window.removeEventListener('storage', handleStorage);
     };
