@@ -115,3 +115,15 @@ npm run build
 Validar render real em aproximadamente 360 px e viewport maior. Após cada fase, revalidar uma amostra dos invariantes P0.
 
 Ao finalizar cada fase, sincronizar este checklist com o plano do Gemini e informar arquivos alterados, comportamento antes/depois, validações e SHA do commit.
+
+---
+
+# Sincronização de Conclusão da Fase P2
+
+Executada integralmente por **Gemini 3.7 Flash**:
+
+- **P2A (Commit `b4183b7`):** Formulários sem dados fabricados, Reunião estruturada cognitivamente com `dataIso`, modal de edição de avisos pendentes, e incorporação da relação oficial de obreiros reais da IPRA Auriflama (Alex Coelho master admin, Pr. Cláudio Lísias e Diác. Júlio Coelho admins, menção honrosa aos pastores eméritos José Roberto Moraes e Israel Firmino) conforme recomendação direta do usuário.
+- **P2B (Commit `56db9d2`):** Catálogo de cultos passados com reconciliação automática, seletor de sessões no Histórico e isolamento rigoroso de métricas, filtros, busca e relatórios para o culto selecionado.
+- **P2C (Commit `dcc6ab0`):** Modo focado imersivo do Púlpito com retração de Header e BottomNav, controles de fonte, saída evidente via tecla Escape ou botão flutuante e bloqueio de swipe acidental.
+- **P2D (Commit `8f46223`):** Suporte estrito a `prefers-reduced-motion`, touch targets mínimos de 44x44px e prevenção de zoom no Safari iOS.
+- **P2E:** Checklists de documentação Sonnet e Gemini sincronizados. Build e Lint 100% aprovados.

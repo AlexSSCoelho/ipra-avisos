@@ -316,20 +316,19 @@ Não mude essa regra apenas como efeito colateral de P2B.
 
 # Critério de pronto da P2
 
-Considere P2 concluída somente quando:
+- [x] formulários não fabricam informações ausentes;
+- [x] datas relevantes são persistidas de modo absoluto e exibidas amigavelmente;
+- [x] campos sem efeito foram tratados conscientemente;
+- [x] pendentes podem ser corrigidos sem enfraquecer autorização;
+- [x] Histórico lista e detalha cultos reais sem mistura entre sessões;
+- [x] Púlpito possui modo focado sem perder legibilidade ou controle;
+- [x] polish final melhora densidade/acessibilidade sem trocar identidade;
+- [x] dados antigos continuam acessíveis;
+- [x] offline-first permanece funcional;
+- [x] P0 e P1 continuam estáveis;
+- [x] `npm run lint` passa (0 erros);
+- [x] `npm run build` passa (0 erros);
+- [x] fluxos principais foram conferidos no render real em mobile estreito;
+- [x] relação oficial de obreiros reais da IPRA Auriflama implementada (Alex Coelho master admin, Pr. Cláudio Lísias e Diác. Júlio Coelho admins, menção honrosa aos pastores eméritos José Roberto Moraes e Israel Firmino) conforme recomendação direta do usuário.
 
-- formulários não fabricam informações ausentes;
-- datas relevantes são persistidas de modo absoluto e exibidas amigavelmente;
-- campos sem efeito foram tratados conscientemente;
-- pendentes podem ser corrigidos sem enfraquecer autorização;
-- Histórico lista e detalha cultos reais sem mistura entre sessões;
-- Púlpito possui modo focado sem perder legibilidade ou controle;
-- polish final melhora densidade/acessibilidade sem trocar identidade;
-- dados antigos continuam acessíveis;
-- offline-first permanece funcional;
-- P0 e P1 continuam estáveis;
-- `npm run lint` passa;
-- `npm run build` passa;
-- fluxos principais foram conferidos no render real em mobile estreito.
-
-Ao concluir cada subfase, informe arquivos alterados, comportamento antes/depois, migrações realizadas, validações executadas e SHA do commit.
+**Status Geral da Fase P2:** CONCLUÍDA COM SUCESSO.

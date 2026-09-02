@@ -238,4 +238,49 @@ Cenários adicionais conforme avanço:
 
 O plano só termina quando P1 e P2 estiverem concluídos, `npm run lint` e `npm run build` passarem, fluxos críticos forem validados no render real, P0 permanecer sem regressões e a identidade visual do IPRA Avisos estiver preservada.
 
-Ao finalizar cada fase, atualize este checklist e o arquivo equivalente do Sonnet para mantê-los sincronizados, informando arquivos alterados, comportamento antes/depois, validações e SHA do commit.
+---
+
+# Registro de Conclusão da Fase P2 (Gemini 3.7 Flash)
+
+A Fase P2 foi totalmente executada e validada, com commits atômicos por subfase:
+
+## Subfases Executadas:
+
+### 1. P2A — Formulários, Dados, Edição de Pendentes e Roster Real IPRA
+- **Status:** CONCLUÍDO (Commit `b4183b7`)
+- **Arquivos:** `types/index.ts`, `data/initialObreiros.ts`, `services/storageService.ts`, `utils/formatters.ts`, `context/AvisosContext.tsx`, `components/diacono/FormVisitante.tsx`, `components/diacono/FormReuniao.tsx`, `components/diacono/FormOracao.tsx`, `components/diacono/FormAvisoGeral.tsx`, `components/diacono/EditarAvisoModal.tsx`, `components/diacono/MeusAvisosHoje.tsx`, `components/pulpito/AvisoCardPulpito.tsx`, `components/historico/HistoricoScreen.tsx`.
+- **Entregas:**
+  - Removidos fallbacks artificiais em visitantes (cidade/igreja vazias permanecem `undefined`), orações (motivo opcional sem frases fabricadas) e geral.
+  - Reunião reorganizada com sequência cognitiva (Qual reunião? → Quando? → Onde? → Responsável) e persistência de `dataIso` absoluta e texto amigável.
+  - Edição ágil e segura de avisos pendentes com modal dedicado e checagem de permissões (autor, dirigente, admin).
+  - Cards e relatórios atualizados sem pontuações órfãs (` • ` ou `()`).
+  - Relação oficial de obreiros reais da IPRA Auriflama implementada por recomendação direta do usuário (Alex Coelho como Master Admin, Pr. Cláudio Lísias e Diác. Júlio Coelho como Admins, e Menção Honrosa para os pastores eméritos José Roberto Moraes e Israel Firmino).
+
+### 2. P2B — Catálogo de Cultos, Seleção de Sessão e Histórico Isolado
+- **Status:** CONCLUÍDO (Commit `56db9d2`)
+- **Arquivos:** `services/storageService.ts`, `context/CultoContext.tsx`, `components/historico/HistoricoScreen.tsx`.
+- **Entregas:**
+  - Catálogo de sessões passadas persistido em `ipra_historico_cultos_v1` com reconciliação retrocompatível de avisos antigos.
+  - Seletor de Sessão / Culto no topo do Histórico com indicativo visual de culto ao vivo ou encerrado.
+  - Métricas (visitantes, orações, reuniões, gerais, pendentes e anunciados), busca em tempo real, filtros de status/categoria e gerador de relatório do WhatsApp restritos estritamente à sessão selecionada.
+
+### 3. P2C — Modo Focado Imersivo do Púlpito
+- **Status:** CONCLUÍDO (Commit `dcc6ab0`)
+- **Arquivos:** `context/AccessibilityContext.tsx`, `App.tsx`, `components/pulpito/PulpitoScreen.tsx`.
+- **Entregas:**
+  - Modo focado do Púlpito com retração total de Header e BottomNav para maximizar área útil vertical.
+  - Barra compacta com controles rápidos de fonte (A-, 100%, A+), identificação do culto/dirigente e botão evidente de saída (além da tecla Escape).
+  - Bloqueio de troca acidental de abas por swipe horizontal enquanto em modo imersivo.
+
+### 4. P2D — Refinamento Visual, Motion e Acessibilidade Mobile
+- **Status:** CONCLUÍDO (Commit `8f46223`)
+- **Arquivos:** `src/index.css`.
+- **Entregas:**
+  - Suporte estrito a `@media (prefers-reduced-motion: reduce)` anulando durações de animações e transições.
+  - Alvos de toque com área mínima de 44x44px em `.touch-target`.
+  - Tipografia de inputs calibrada para 16px no mobile, evitando auto-zoom no Safari iOS.
+
+### 5. P2E — Sincronização Documental
+- **Status:** CONCLUÍDO
+- **Validações:** `npm run lint` (0 erros) e `npm run build` (sucesso limpo em 1856 módulos).
+
