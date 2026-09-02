@@ -2,513 +2,297 @@
 
 # Objetivo
 
-Evoluir o aplicativo `AlexSSCoelho/ipra-avisos` a partir de uma auditoria conjunta do código real e de 15 capturas reais do aplicativo em Android, melhorando principalmente experiência de usuários leigos, arquitetura de informação, separação de responsabilidades, permissões, confiabilidade dos dados, navegação mobile, legibilidade e eficiência operacional.
+Evoluir o aplicativo `AlexSSCoelho/ipra-avisos` a partir da auditoria do código e de 15 capturas reais do Android, melhorando experiência de usuários leigos, arquitetura de informação, permissões, confiabilidade, navegação mobile, legibilidade e eficiência operacional.
 
 O executor desta especificação é **Claude Sonnet 4.6 (Thinking) no Google Antigravity**.
 
-A intenção não é redesenhar o produto por estética. A identidade visual atual é coerente e vários fluxos já funcionam bem, sobretudo a leitura no Púlpito. Preserve o que é claro e reconhecível. Priorize primeiro problemas de produto, fluxo e confiabilidade; refinamentos visuais vêm depois.
+A intenção não é redesenhar o produto por estética. Preserve a identidade visual atual e especialmente a clareza do Púlpito. Faça apenas as alterações necessárias para cumprir a fase em execução. Não adicione funcionalidades, abstrações, dependências ou refatorações fora do escopo, salvo quando forem indispensáveis para corrigir problema diretamente relacionado.
 
-Faça apenas as alterações necessárias para cumprir os requisitos desta especificação. Não adicione funcionalidades, dependências, abstrações, refatorações ou redesigns fora do escopo, salvo quando forem indispensáveis para corrigir um problema diretamente relacionado.
+# Estado sincronizado de implementação
+
+Este checklist reflete o estado da branch `implementacao-fases` após o commit `45a249e9e29d0d0fcccc9c664c4e530d0ac287e7` e deve permanecer sincronizado com `IPRA_AVISOS_UX_IMPLEMENTATION_GEMINI_3_7_FLASH.md`.
+
+## P0 — integridade e autorização
+
+- [x] remover dados demo/fallbacks fictícios de produção;
+- [x] remover autoidentificação como primeiro obreiro;
+- [x] limitar swipe global e respeitar controles/`no-swipe`;
+- [x] persistir o horário real escolhido para novo culto;
+- [x] métricas da Home passam a usar o culto atual;
+- [x] relatório atual não mistura avisos globais com a data do culto;
+- [x] `setDirigenteDoCulto()` não cria mais um culto por rota indireta;
+- [x] PIN padrão/fallback `1234` removido;
+- [x] bootstrap explícito para primeira instalação criado;
+- [x] `isAdmin` passou a depender de permissão explícita;
+- [x] cadastro comum de obreiros saiu da tela de identificação;
+- [x] exclusão/cancelamento de aviso pendente ganhou regra por autor/status/permissão;
+- [x] aviso anunciado não é apagado pelo fluxo comum;
+- [ ] dirigente atual deve conseguir se identificar sem PIN quando não há troca real;
+- [ ] remover `bypassAdminCheck` público de `addObreiro()` e substituir por operação específica de bootstrap;
+- [ ] tratar migração de instalação existente com admin, mas sem PIN persistido;
+- [ ] restringir `setInitialPin()` ou equivalente a bootstrap/migração válidos;
+- [ ] `finalizarCulto()` deve falhar quando não existe culto em andamento ou ele já está finalizado;
+- [ ] sincronizar `currentUser` com registro migrado de `isAdmin`.
+
+A continuação dessas correções será executada a partir do Gemini 3.7 Flash, usando `IPRA_AVISOS_P0_CORRECOES_FINAIS_GEMINI_3_7_FLASH.md`. **Não iniciar P1 antes de todas as pendências P0 estarem concluídas e validadas.**
+
+## P1 — arquitetura de informação e experiência mobile
+
+- [ ] tornar navegação orientada à tarefa;
+- [ ] simplificar Home e remover duplicações;
+- [ ] reduzir cabeçalho fixo;
+- [ ] separar Preferências de Administração;
+- [ ] clarificar identificação versus autenticação;
+- [ ] refinar linguagem operacional e remover termos técnicos/ambíguos.
+
+## P2 — formulários, histórico e refinamento
+
+- [ ] não fabricar valores de campos opcionais;
+- [ ] simplificar formulário de reunião;
+- [ ] persistir datas absolutas em vez de expressões relativas;
+- [ ] revisar opções que não afetam Púlpito/Histórico/relatórios;
+- [ ] melhorar edição/desfazer de aviso pendente;
+- [ ] implementar Histórico real por culto/sessão;
+- [ ] criar modo focado de Púlpito;
+- [ ] refinar densidade visual, tipografia, motion e acessibilidade sem trocar identidade.
 
 # Contexto relevante
 
-## Produto
+O IPRA Avisos é um aplicativo React + TypeScript + Vite, empacotável via Capacitor para Android. O fluxo principal conecta recepção/diaconia ao dirigente do culto.
 
-O IPRA Avisos é um aplicativo React + TypeScript + Vite, empacotável com Capacitor para Android, usado durante cultos da IPRA Auriflama. O fluxo principal conecta pessoas da recepção/diaconia que registram informações ao dirigente que lê os avisos no púlpito.
-
-Os quatro tipos de registro são:
+Tipos de registro:
 
 - visitante;
 - pedido de oração;
 - reunião/grupo;
 - comunicado geral.
 
-O aplicativo funciona localmente via `localStorage`/`BroadcastChannel` e pode sincronizar com Firestore quando configurado.
+Persistência e sincronização:
 
-## Usuários e tarefas
+- `localStorage`;
+- `BroadcastChannel`;
+- Firestore opcional;
+- funcionamento offline-first deve ser preservado.
 
-Considere pelo menos três modos de uso, mesmo que uma pessoa possa acumular funções:
+Usuários/tarefas principais:
 
-1. **Recepção / Diaconia** — registrar rapidamente um aviso e confirmar que ele chegou ao púlpito.
-2. **Dirigente / Púlpito** — ler o que está pendente, marcar como anunciado e recuperar um item marcado por engano.
-3. **Administração** — iniciar/encerrar culto, definir dirigente, gerenciar obreiros, consultar histórico, ajustar preferências e configurações administrativas.
+1. **Recepção / Diaconia** — registrar aviso rapidamente e confirmar que chegou ao Púlpito.
+2. **Dirigente / Púlpito** — ler pendências, marcar como anunciado e recuperar enganos.
+3. **Administração** — iniciar/encerrar culto, definir dirigente, gerenciar obreiros, consultar histórico e configurar o sistema.
 
-A interface deve continuar simples para usuários que não têm familiaridade técnica.
+O fluxo central deve permanecer simples: **registrar → chegar ao Púlpito → anunciar → registrar como concluído**.
 
-## Princípio do produto
+# O que já funciona e deve ser preservado
 
-O fluxo central deve permanecer simples:
+- identidade visual azul-marinho/branco/âmbar;
+- cores de categoria;
+- boa hierarquia e legibilidade do Púlpito;
+- separação conceitual entre Anotação, Púlpito e Histórico;
+- fluxo operacional de envio e anúncio;
+- suporte offline-first;
+- touch targets e tipografia já razoáveis em boa parte da interface.
 
-**registrar → chegar ao púlpito → anunciar → registrar como concluído**.
+# Problema central
 
-Administração, configuração e histórico são funções de apoio. Não deixe essas funções competirem visualmente com o trabalho operacional durante o culto.
+O aplicativo está visualmente mais maduro do que sua arquitetura de informação. Funções repetidas aparecem no cabeçalho, Home, cards, perfil e Ajustes. Isso aumenta carga cognitiva para usuários leigos e consome espaço vertical no celular.
 
-## Stack e comandos existentes
-
-Não troque a stack nem introduza biblioteca de UI sem necessidade real.
-
-Comandos existentes em `package.json`:
-
-```bash
-npm run build
-npm run lint
-npm run dev
-npm run preview
-```
-
-O build já executa TypeScript via `tsc -b` antes do Vite.
-
-## Arquivos principais
-
-Antes de editar, confira o estado atual destes arquivos e os contratos entre eles:
-
-- `src/App.tsx`
-- `src/components/common/Header.tsx`
-- `src/components/auth/LoginScreen.tsx`
-- `src/components/home/HomeScreen.tsx`
-- `src/components/diacono/DiaconoDashboard.tsx`
-- `src/components/diacono/FormVisitante.tsx`
-- `src/components/diacono/FormOracao.tsx`
-- `src/components/diacono/FormReuniao.tsx`
-- `src/components/diacono/FormAvisoGeral.tsx`
-- `src/components/diacono/MeusAvisosHoje.tsx`
-- `src/components/pulpito/PulpitoScreen.tsx`
-- `src/components/pulpito/AvisoCardPulpito.tsx`
-- `src/components/historico/HistoricoScreen.tsx`
-- `src/components/configuracoes/SettingsModal.tsx`
-- `src/components/culto/IniciarCultoModal.tsx`
-- `src/context/AuthContext.tsx`
-- `src/context/CultoContext.tsx`
-- `src/context/AvisosContext.tsx`
-- `src/context/AccessibilityContext.tsx`
-- `src/services/storageService.ts`
-- `src/types/index.ts`
-- `src/index.css`
-
-Não assuma que este documento substitui o código. Primeiro confirme o estado atual do repositório.
-
-# Diagnóstico consolidado
-
-## O que já funciona e deve ser preservado
-
-- A divisão conceitual entre **Anotação**, **Púlpito** e **Histórico** é fácil de entender.
-- Os quatro tipos de registro usam linguagem compatível com o domínio da igreja.
-- O Púlpito possui boa hierarquia visual, tipografia grande, categorias reconhecíveis e uma ação primária evidente para marcar como anunciado.
-- A indicação de pendências e a separação entre “para ler” e “já lidos” dão segurança operacional.
-- O fluxo “registrar → chegar ao púlpito → marcar como anunciado” é uma boa base e não deve ser substituído por arquitetura mais complexa.
-- A identidade em azul-marinho, branco e âmbar é coerente com o produto.
-- O suporte offline-first é importante e deve ser preservado.
-
-## Problema central
-
-O aplicativo está visualmente mais maduro do que sua arquitetura de informação. O maior problema não é aparência, mas o fato de funções, responsabilidades e atalhos aparecerem simultaneamente para todos.
-
-Hoje o usuário encontra as mesmas funções no cabeçalho, Home, cards de atalho, menu do perfil e Ajustes. Isso aumenta carga cognitiva e reduz objetividade, especialmente em celulares e para pessoas leigas.
-
-Também existem problemas de autorização, estado inicial e integridade de dados que podem produzir ações erradas ou fazer dados de demonstração parecerem reais.
+As primeiras fases também revelaram problemas de autorização, bootstrap e escopo de dados; por isso P0 precisa estar realmente fechado antes de qualquer reorganização visual.
 
 # Escopo e restrições gerais
 
-- Preserve a identidade visual reconhecível do app.
-- Preserve o fluxo operacional básico de Anotação → Púlpito.
-- Preserve offline-first.
+- Preserve identidade visual e fluxo Anotação → Púlpito.
+- Preserve offline-first e dados reais existentes.
 - Não troque React, Vite, Capacitor, Firebase ou a arquitetura inteira sem necessidade demonstrável.
-- Não adicione nova biblioteca de UI apenas para executar este plano.
+- Não adicione biblioteca de UI apenas para executar este plano.
 - Não transforme o app em dashboard corporativo genérico.
-- Não reduza a legibilidade do Púlpito em nome de densidade.
-- Mudança de schema exige compatibilidade ou migração consciente.
-- Não trate dado fictício como dado real durante migração.
-- Não aproveite esta tarefa para refatorar módulos não relacionados.
+- Não reduza legibilidade do Púlpito em nome de densidade.
+- Mudança de schema exige compatibilidade/migração consciente.
+- Não use dados fictícios, credenciais padrão ou flags de bypass.
+- Não aproveite uma fase para refatorar módulos não relacionados.
+- Para Sonnet 4.6: mantenha escopo estrito. Não expanda exploração só porque encontra oportunidades adjacentes.
 
-# Prioridade P0 — corrigir antes de qualquer refinamento visual
+# Prioridade P0
 
-## 1. Remover dados de demonstração do fluxo de produção
+## 1. Dados e primeiro uso
 
-`src/services/storageService.ts` inicializa automaticamente uma lista realista de obreiros, um culto ativo de demonstração, avisos de demonstração e PIN administrativo `1234`. Os métodos de leitura também usam dados de demonstração como fallback quando não encontram armazenamento local ou ocorre erro de parse.
+Produção deve iniciar vazia ou em onboarding explícito. Dados demo só podem existir em modo de desenvolvimento/demonstração opt-in. Erro de parse nunca vira dado fictício.
 
-### Resultado esperado
+Estado: **concluído**, com bootstrap inicial criado; restam apenas as correções finais sincronizadas acima.
 
-- Produção começa em estado vazio ou onboarding explícito.
-- Dados de demonstração só existem em modo de desenvolvimento/demonstração claramente opt-in.
-- Erro de leitura não vira silenciosamente informação fictícia.
-- Instalações existentes não devem perder dados reais sem estratégia de migração.
+## 2. Identificação e administração
 
-## 2. Não identificar automaticamente como o primeiro obreiro
+Sem usuário persistido válido, `currentUser` deve ser `null`. Identificação por nome não deve ser comunicada como autenticação forte. Administração depende de permissão explícita, não de cargo.
 
-`src/context/AuthContext.tsx` retorna `DEFAULT_OBREIROS[0]` quando não existe usuário salvo.
+Estado: **parcialmente concluído**; falta sincronizar `currentUser` durante migração e fechar contratos de bootstrap/PIN.
 
-### Resultado esperado
+## 3. Ações críticas
 
-- Sem usuário persistido válido, `currentUser` deve ser `null`.
-- Exiba identificação/seleção de usuário.
-- Se o uso comum continuar sem autenticação individual real, trate essa tela como identificação operacional, não como segurança completa.
-- Ações administrativas exigem autorização própria.
+Iniciar/encerrar culto, trocar dirigente, gerenciar obreiros, alterar segurança e marcar/desmarcar avisos precisam de autorização coerente em UI e domínio/context.
 
-## 3. Corrigir permissões das ações críticas
+Estado: **quase concluído**; faltam os últimos gaps listados no checklist.
 
-Revise:
+## 4. Swipe
 
-- iniciar novo culto;
-- encerrar culto;
-- trocar dirigente;
-- cadastrar/administrar obreiros;
-- alterar segurança;
-- configurar nuvem;
-- marcar/desmarcar avisos como anunciados.
+A navegação horizontal não pode competir com formulários, chips, botões ou regiões roláveis. O handler deve respeitar `data-no-swipe`, `.no-swipe`, inputs, selects, botões e links.
 
-Na Home, “Concluir sessão deste culto” é renderizado sem guarda explícita de `isAdmin`/`isDirigente`; `CultoContext.finalizarCulto()` também não valida quem fez a ação.
+Estado: **concluído**.
 
-### Resultado esperado
+## 5. Horário do culto
 
-- Defina política única de autorização e reutilize em UI e domínio/context.
-- Não dependa apenas de esconder botão: a operação também deve recusar chamada indevida no nível apropriado.
-- Como regra inicial, ações que alteram a sessão do culto devem ser permitidas ao dirigente atual e/ou administrador.
-- Se houver ambiguidade material sobre quem deve ter determinada permissão, trate isso como decisão de produto e peça confirmação antes de assumir.
+Se o horário é editável, o valor escolhido deve ser persistido; caso contrário, o controle deveria ser removido.
 
-## 4. Corrigir o swipe global
+Estado: **concluído** com `input type="time"` e persistência do valor.
 
-`src/App.tsx` interpreta swipe horizontal em praticamente qualquer área da tela com limiar baixo, mas diversos componentes já usam `data-no-swipe="true"` e `.no-swipe` sem que o handler global respeite isso.
+## 6. Escopo de Histórico/relatório
 
-### Resultado esperado
+Relatórios e métricas não podem misturar cultos. A correção P0 passou a usar o culto atual, evitando o relatório incorreto.
 
-Prefira a solução mais previsível:
+Estado: **P0 concluído para integridade**, mas Histórico por sessões anteriores continua em P2.
 
-1. remover navegação universal por swipe; ou
-2. manter swipe apenas em áreas seguras, respeitando `data-no-swipe`, `.no-swipe`, botões, links, selects, regiões roláveis e formulários, com bloqueio direcional mais conservador.
+## 7. Métricas da Home
 
-A navegação nunca deve trocar de módulo durante interação horizontal com um controle.
+Métricas do culto em andamento devem considerar apenas `avisosCultoAtual`.
 
-## 5. Corrigir o horário do novo culto
-
-`src/components/culto/IniciarCultoModal.tsx` permite editar `horario`, mas `handleIniciar()` não envia esse valor e `src/context/CultoContext.tsx` grava a hora atual.
-
-### Resultado esperado
-
-- Se o campo permanecer, o valor escolhido deve ser validado e persistido.
-- Use `input type="time"` quando fizer sentido.
-- Se o negócio exige sempre a hora real de abertura, remova o campo editável.
-
-## 6. Corrigir escopo do Histórico e do relatório
-
-`HistoricoScreen.tsx` trabalha sobre `avisos` globais. Métricas e relatório incluem todos os registros, enquanto o cabeçalho usa a data atual.
-
-### Resultado esperado
-
-- Histórico deve ter noção explícita de sessão/culto.
-- Usuário consegue selecionar ou abrir um culto por data/nome/dirigente.
-- Métricas, busca e exportação respeitam o culto selecionado.
-- O relatório informa claramente culto e data exportados.
-- Se uma visão global existir, ela deve ser rotulada como global.
-
-## 7. Corrigir métricas da Home
-
-`HomeScreen.tsx` calcula métricas usando `avisos` globais, apesar de o `AvisosContext` já possuir contadores do culto atual.
-
-### Resultado esperado
-
-Métricas do culto em andamento representam apenas o culto ativo.
+Estado: **concluído**.
 
 # Prioridade P1 — reorganizar experiência e arquitetura de informação
 
-## 8. Tornar a navegação orientada à tarefa
+Só iniciar após fechamento e validação do P0.
 
-A estrutura atual expõe quatro abas fixas — Início, Anotação, Púlpito e Histórico — para todos e repete as mesmas funções em outros lugares.
+## 8. Navegação orientada à tarefa
 
-### Direção esperada
+Recepção/diaconia deve chegar à Anotação com mínima fricção; dirigente ao Púlpito; administração a Home/Histórico/Administração. Uma pessoa pode acumular funções, portanto evite hard-hiding desnecessário.
 
-Preserve os módulos conceituais, mas priorize o contexto de trabalho:
+No mobile, avalie navegação inferior versus cabeçalho atual pelo resultado real, não por tendência. Máximo de quatro destinos primários, ícone+rótulo e estado ativo inequívoco.
 
-- recepção/diaconia → Anotação mais imediata;
-- dirigente → Púlpito mais imediato;
-- administração → Home/Histórico/Administração com maior relevância.
-
-Não é necessário esconder rigidamente todos os outros módulos; uma pessoa pode acumular funções. O objetivo é reduzir distração e impedir ações sem autorização.
-
-No mobile, avalie navegação principal no rodapé se isso reduzir altura de chrome e melhorar alcance do polegar. Não implemente bottom navigation apenas por tendência: compare com a estrutura atual renderizada e escolha a opção que objetivamente melhora o uso.
-
-Em qualquer alternativa:
-
-- no máximo quatro destinos primários;
-- ícone + rótulo legível;
-- estado ativo inequívoco;
-- badges apenas quando informam algo operacional;
-- Ajustes fora da navegação principal.
-
-## 9. Simplificar a Home
-
-A Home atual mostra identidade, culto, dirigente, quatro métricas, ações principais, encerramento, atalhos repetidos, Ajustes e instalação.
-
-### Resultado esperado
+## 9. Simplificar Home
 
 A Home deve responder rapidamente:
 
 1. qual culto está ativo;
-2. qual é meu contexto agora;
-3. qual é a ação mais provável que preciso executar.
+2. qual é meu contexto;
+3. qual ação provavelmente preciso executar.
 
-Recomendações:
+Remover grid que repete navegação, limitar ações secundárias, mover instalação/download para área secundária e mostrar encerrar culto apenas a autorizado.
 
-- status do culto compacto;
-- uma ação primária compatível com o contexto;
-- no máximo uma ou duas ações secundárias relevantes;
-- remover grid que apenas repete a navegação principal;
-- não repetir Ajustes em múltiplos locais;
-- mover instalação/download para área secundária;
-- encerrar culto apenas para autorizado.
+## 10. Reduzir cabeçalho fixo
 
-## 10. Reduzir o cabeçalho fixo
-
-As capturas reais mostram duas linhas permanentes no topo consumindo parte relevante do viewport.
-
-### Resultado esperado
-
-- Preserve informação essencial do culto.
-- Reduza controles administrativos permanentes.
-- Evite repetir status e identidade imediatamente no conteúdo.
-- Corrija truncamentos em larguras próximas de 360 px.
+Preservar status essencial do culto e pendências, reduzir controles administrativos permanentes, evitar repetição imediata de identidade/status e corrigir truncamentos em aproximadamente 360 px.
 
 ## 11. Separar Preferências de Administração
 
-`SettingsModal.tsx` mistura perfil, som, tema, tamanho de texto, APK/PWA, dirigente, obreiros, PIN e Firestore JSON. Nas capturas reais, as próprias abas ficam parcialmente cortadas.
+Organização esperada:
 
-### Organização recomendada
+- Preferências: som, tema, fonte, app;
+- Identificação: usuário atual/troca;
+- Administração do culto: dirigente/iniciar/encerrar;
+- Pessoas: obreiros/permissões;
+- Segurança: PIN;
+- Sistema avançado: sincronização/diagnóstico.
 
-**Preferências**
-- som;
-- tema;
-- tamanho do texto;
-- informações/instalação do app.
+Firebase JSON não deve competir com preferências comuns; se runtime config permanecer necessário, colocá-lo em área avançada protegida.
 
-**Identificação**
-- usuário atual;
-- trocar usuário.
+## 12. Identificação versus autenticação
 
-**Administração do culto**
-- dirigente;
-- iniciar/encerrar culto.
+Seleção simples de nome é identificação operacional. Ações privilegiadas devem ter autorização independente e comunicação coerente.
 
-**Administração de pessoas**
-- obreiros;
-- permissões;
-- editar/ativar/desativar se o modelo suportar.
+## 13. Linguagem operacional
 
-**Segurança**
-- PIN e regras de autorização.
+- “MASTER” → “Administrador” quando necessário;
+- “Copiar para WhatsApp” → “Copiar relatório” se apenas copia;
+- “Guarda permanente” somente se a garantia existir;
+- “No Púlpito” em pendentes → “Aguardando anúncio”/“Enviado ao púlpito”.
 
-**Sistema avançado**
-- sincronização e diagnóstico, se realmente necessário.
+# Prioridade P2
 
-A configuração JSON do Firebase não deve aparecer como configuração comum para usuário leigo. Prefira configuração de implantação por variáveis de ambiente. Se runtime config for requisito real, mantenha-a em área avançada protegida e com validação.
+## 14. Campos opcionais
 
-## 12. Clarificar identificação versus autenticação
+Não transformar ausência de cidade/igreja em `Auriflama`/`Primeira Visita` sem escolha explícita.
 
-A seleção de nome é mais próxima de identificação operacional do que login seguro.
+## 15. Reunião
 
-### Resultado esperado
+Hierarquia: **Qual reunião? → Quando? → Onde? → Responsável**. Pode continuar numa tela; use progressive disclosure apenas se reduzir carga cognitiva. Não transforme em wizard sem necessidade.
 
-- remover exposição do PIN padrão no placeholder;
-- cadastro de obreiro exige autorização adequada;
-- não comunicar seleção simples de nome como proteção de segurança;
-- ações privilegiadas usam autorização independente.
+## 16. Datas
 
-## 13. Refinar linguagem operacional
+Persistir datas absolutas e renderizar texto amigável. Expressões como “Próxima Terça-feira” não podem ser a única informação armazenada.
 
-Revise textos que induzem interpretação errada:
+## 17. Campos sem efeito
 
-- “MASTER” → preferir “Administrador” se a badge for necessária;
-- “Copiar para WhatsApp” → “Copiar relatório” se só copia para clipboard;
-- opcionalmente “Compartilhar” como ação separada se a plataforma permitir;
-- “Guarda permanente” só pode permanecer se persistência for realmente garantida;
-- “No Púlpito” em pendentes → preferir “Aguardando anúncio” ou “Enviado ao púlpito”.
+Confirmar uso real antes de obrigar escolha. Se categoria/público-alvo não influencia Púlpito, Histórico, filtro, relatório ou regra, revisar necessidade.
 
-# Prioridade P2 — formulários, histórico e refinamento visual
+## 18. Correção de aviso pendente
 
-## 14. Não fabricar valores de campos opcionais
+Avaliar edição enquanto pendente ou ação “Desfazer/Editar” após envio, sem complexidade excessiva.
 
-Em `FormVisitante.tsx`, cidade vazia vira `Auriflama` e igreja vazia vira `Primeira Visita`.
+## 19. Histórico por culto
 
-### Resultado esperado
+Entrada deve listar sessões por data/nome/dirigente/quantidade. Ao abrir, métricas, filtros, busca e exportação respeitam a sessão selecionada.
 
-Ausência de informação deve permanecer ausência (`undefined`/vazio) ou resultar de escolha explícita do usuário. Não transforme campo omitido em fato presumido.
+## 20. Púlpito focado
 
-## 15. Simplificar formulário de reunião
+Preservar o visual forte atual e reduzir chrome: culto/status, pendentes, fonte, Para Ler/Já Lidos e cards. Deve existir saída clara do modo focado.
 
-O formulário apresenta muitos grupos, dias e horários simultaneamente.
+## 21. Refinamento visual
 
-### Resultado esperado
-
-Organize a hierarquia como:
-
-**Qual reunião? → Quando? → Onde? → Responsável**
-
-Pode continuar em uma única tela. Use progressive disclosure quando realmente reduzir carga cognitiva; não transforme o fluxo simples em wizard desnecessário.
-
-## 16. Persistir datas reais
-
-Não armazene apenas expressões relativas como “Próxima Terça-feira” ou “Próximo Domingo”.
-
-### Resultado esperado
-
-- armazene data absoluta em formato adequado;
-- renderize texto amigável na UI;
-- prefira `date`/`time` quando melhorarem confiabilidade;
-- preserve/migre registros antigos de forma compatível.
-
-## 17. Revisar opções que não afetam o destino
-
-Antes de manter categorias extras, confirme onde são utilizadas. Se categoria de oração ou público-alvo do comunicado não influenciar Púlpito, Histórico, filtros, relatório ou regra real, não obrigue o usuário a escolher algo sem efeito.
-
-Não remova campo apenas por parecer redundante: confirme suas referências no repositório primeiro.
-
-## 18. Melhorar correção de aviso recém-enviado
-
-`MeusAvisosHoje` já oferece cancelamento de pendente.
-
-Avalie, sem adicionar complexidade excessiva:
-
-- edição enquanto ainda pendente; ou
-- ação rápida “Desfazer/Editar” logo após envio.
-
-Substitua `window.confirm`/`alert` por feedback consistente quando isso trouxer ganho real de clareza.
-
-## 19. Organizar Histórico por culto
-
-A entrada do Histórico deve priorizar sessões de culto, por exemplo:
-
-- `30/08/2026 — Culto da Família` — dirigente — 8 registros;
-- `27/08/2026 — Culto de Doutrina` — dirigente — 5 registros.
-
-Ao abrir um culto, mostre métricas, filtros, busca e registros daquele escopo.
-
-Preserve consulta global apenas se houver necessidade real.
-
-## 20. Criar modo focado de Púlpito
-
-O Púlpito é uma das partes visualmente mais fortes. Não o redesenhe indiscriminadamente.
-
-### Resultado esperado
-
-Modo de leitura com mínimo de chrome:
-
-- nome/status do culto;
-- quantidade pendente;
-- tamanho da fonte;
-- Para Ler/Já Lidos;
-- cards;
-- forma clara de sair do modo focado.
-
-A legibilidade continua tendo prioridade sobre densidade.
-
-## 21. Refinar densidade visual sem trocar identidade
-
-Preserve azul-marinho, âmbar, cores de categoria e alta legibilidade do Púlpito.
-
-Reduza containers, cards, badges, sombras e gradientes somente quando não estiverem agrupando informação ou ação. Evite texto operacional importante em 9–10 px. Garanta alvos touch próximos de 44 px. Considere `prefers-reduced-motion` para animações repetitivas.
+Reduzir cards/badges/sombras apenas quando não ajudam agrupamento. Evitar texto operacional em 9–10 px. Manter alvos touch próximos de 44 px e considerar `prefers-reduced-motion`.
 
 # Execução
 
-## Fase 1 — explorar e planejar P0
+## Fase 1 — fechar P0
 
-Antes de editar:
+O trabalho atual foi transferido para Gemini 3.7 Flash. Não executar P1/P2 enquanto `IPRA_AVISOS_P0_CORRECOES_FINAIS_GEMINI_3_7_FLASH.md` não estiver concluído e este checklist atualizado.
 
-1. confirme o estado atual dos arquivos diretamente relacionados aos P0;
-2. localize referências aos schemas de culto, aviso, obreiro e persistência;
-3. identifique risco de migração em dados reais existentes;
-4. produza um plano curto citando arquivos e efeitos esperados.
+## Fase 2 — arquitetura mobile
 
-Não faça varredura ampla sem propósito. Expanda a busca apenas quando uma referência encontrada demonstrar efeito colateral relevante.
+Navegação, Home, cabeçalho e separação Preferências/Administração. Inspecionar render real antes de escolher estrutura.
 
-## Fase 2 — implementar integridade e autorização
+## Fase 3 — captura de informações
 
-Implemente P0 primeiro. Mantenha alterações focadas e compatíveis com a arquitetura existente.
+Formulários, datas/horários, defaults e recuperação/edição de pendentes.
 
-Se uma decisão material de produto for necessária — por exemplo, exatamente quais papéis podem encerrar culto — peça confirmação antes de escolher arbitrariamente.
+## Fase 4 — Histórico e Púlpito
 
-## Fase 3 — arquitetura mobile
+Histórico por culto e modo focado de leitura.
 
-Depois de P0 validado, reorganize navegação, Home, cabeçalho e separação entre Preferências/Administração.
+## Fase 5 — polish
 
-Inspecione a interface renderizada; não determine qualidade visual apenas pelo JSX.
-
-## Fase 4 — captura de informações
-
-Refine formulários, datas/horários, defaults e recuperação/edição de registros pendentes.
-
-Priorize velocidade de entrada e redução de erro.
-
-## Fase 5 — Histórico e Púlpito
-
-Implemente Histórico por culto e modo focado de Púlpito sem degradar o fluxo atual.
-
-## Fase 6 — polish
-
-Somente depois dos fluxos e estados estarem corretos, refine densidade, tipografia, motion, mensagens e acessibilidade.
-
-Não use esta fase como oportunidade para redesign total.
+Densidade, tipografia, motion, mensagens e acessibilidade. Não usar como oportunidade para redesign total.
 
 # Validação
 
-Execute no mínimo:
+Executar no mínimo:
 
 ```bash
 npm run lint
 npm run build
 ```
 
-Corrija falhas antes de concluir.
+Inspecionar também a interface renderizada em viewport próximo de 360 px e em viewport maior. Build/lint não substituem validação visual.
 
-Faça inspeção visual e funcional em viewport mobile estreito, incluindo aproximadamente 360 px de largura, e em viewport maior.
+Cenários globais:
 
-Valide manualmente:
-
-1. instalação/armazenamento novo sem dados;
-2. identificação como usuário comum;
-3. tentativa de ação administrativa sem permissão;
-4. administrador iniciando culto;
-5. horário escolhido versus persistido;
-6. diácono registrando os quatro tipos;
-7. aviso chegando ao Púlpito;
-8. dirigente marcando como anunciado;
-9. recuperação de item marcado por engano;
-10. cancelamento/edição de pendente, se implementado;
-11. encerramento por autorizado e bloqueio para não autorizado;
-12. abertura de novo culto sem misturar pendências do anterior;
-13. Histórico com pelo menos dois cultos;
-14. relatório/exportação de culto específico;
-15. recarga offline;
-16. chips/seletores sem swipe acidental;
-17. teclado aberto sem esconder ação crítica;
-18. tema claro e escuro;
-19. tamanhos de fonte;
-20. estados vazio, sucesso, erro e ausência de culto ativo;
-21. ausência de truncamentos relevantes em aproximadamente 360 px.
-
-Para comportamento visual, não considere a tarefa validada apenas porque build e lint passaram.
+1. instalação nova;
+2. bootstrap/admin/PIN;
+3. usuário comum sem permissões administrativas;
+4. admin iniciando culto;
+5. horário persistido;
+6. quatro tipos de aviso;
+7. chegada ao Púlpito;
+8. marcar/desmarcar anúncio;
+9. cancelar pendente conforme permissão;
+10. encerrar culto autorizado e bloquear indevido;
+11. abrir novo culto sem misturar pendências;
+12. relatório por culto;
+13. recarga offline;
+14. chips/seletores sem swipe acidental;
+15. tema claro/escuro e fontes;
+16. estados vazio/sucesso/erro/sem culto;
+17. Histórico de múltiplos cultos quando P2 for implementado;
+18. ausência de truncamentos relevantes em mobile estreito.
 
 # Critério de pronto
 
-A implementação só está concluída quando:
+O plano completo só termina quando P0, P1 e P2 estiverem concluídos, `npm run lint` e `npm run build` passarem, os fluxos críticos forem validados no render real e a identidade visual do IPRA Avisos estiver preservada.
 
-- instalação nova não apresenta pessoas, cultos ou avisos fictícios como produção;
-- ninguém é implicitamente identificado como o primeiro obreiro;
-- ações críticas possuem autorização no comportamento e na UI;
-- horário do culto é verdadeiro ou o campo foi removido;
-- métricas e relatórios não misturam cultos;
-- Histórico possui escopo de culto compreensível;
-- interações horizontais não causam mudança acidental de módulo;
-- recepção consegue registrar aviso com menos distrações que na versão atual;
-- dirigente consegue operar Púlpito sem chrome administrativo desnecessário;
-- configurações técnicas não competem com preferências comuns;
-- dados opcionais não são fabricados silenciosamente;
-- datas futuras continuam compreensíveis posteriormente;
-- identidade visual do IPRA Avisos foi preservada;
-- `npm run lint` e `npm run build` passam;
-- fluxos críticos foram conferidos no render real em mobile realista;
-- não foram introduzidas refatorações, dependências ou funcionalidades não relacionadas ao escopo.
-
-Ao finalizar cada fase, informe de forma objetiva:
-
-- arquivos alterados;
-- comportamento antes/depois;
-- validações executadas;
-- qualquer decisão material ainda dependente de confirmação.
+Ao finalizar cada fase, atualizar o checklist deste arquivo e o arquivo equivalente do Gemini para que ambos permaneçam sincronizados.
