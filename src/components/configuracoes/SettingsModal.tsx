@@ -32,7 +32,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, logout, obreiros, addObreiro, updateAdminPin, configureMigrationPin, hasPinConfigured, isAdmin } = useAuth();
+  const { currentUser, logout, obreiros, addObreiro, updateAdminPin, configureMigrationPin, importarObreirosOficiais, hasPinConfigured, isAdmin } = useAuth();
   const { cultoAtivo, dirigenteAtualNome, definirDirigente } = useCulto();
   const { 
     isPulpitMode, 
@@ -76,6 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     return cfg ? JSON.stringify(cfg, null, 2) : '';
   });
   const [firebaseSaved, setFirebaseSaved] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
 
   if (!isOpen) return null;
 
@@ -105,6 +106,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setNome('');
     setIsNovoAdmin(false);
     setShowAddObreiro(false);
+  };
+
+  const handleImportarOficiais = () => {
+    const res = importarObreirosOficiais();
+    setImportMsg(res.message);
+    setTimeout(() => setImportMsg(''), 4500);
   };
 
   const handleConfigureInitialPin = (e: React.FormEvent) => {
@@ -516,6 +523,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       <Plus className="w-3.5 h-3.5" />
                       <span>{showAddObreiro ? 'Fechar' : 'Novo'}</span>
                     </button>
+                  </div>
+
+                  {/* Ação Administrativa: Importar Obreiros Oficiais da IPRA */}
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="text-xs font-black text-amber-900 dark:text-amber-200">
+                          Relação Oficial IPRA Auriflama
+                        </div>
+                        <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                          Importar equipe completa e menções honrosas sem sobrescrever registros
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleImportarOficiais}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+                      >
+                        Importar
+                      </button>
+                    </div>
+
+                    {importMsg && (
+                      <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 text-xs font-bold text-amber-900 dark:text-amber-200 animate-in fade-in">
+                        {importMsg}
+                      </div>
+                    )}
                   </div>
 
                   {showAddObreiro && (

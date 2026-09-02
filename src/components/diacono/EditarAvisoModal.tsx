@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, CheckCircle2, Save, AlertTriangle, User, Heart, CalendarDays, Megaphone } from 'lucide-react';
 import type { AvisoItem, GrupoReuniao, CategoriaOracao } from '../../types';
 import { useAvisos } from '../../context/AvisosContext';
-import { getTipoAvisoLabel } from '../../utils/formatters';
+import { getTipoAvisoLabel, formatarDataIsoAmigavel } from '../../utils/formatters';
 
 interface EditarAvisoModalProps {
   isOpen: boolean;
@@ -29,12 +29,16 @@ const EditarAvisoForm: React.FC<{ aviso: AvisoItem; onClose: () => void }> = ({ 
   const [oraMotivo, setOraMotivo] = useState(aviso.oracao?.motivo || '');
   const [oraUrgente, setOraUrgente] = useState(aviso.oracao?.urgente || false);
 
-  // 3. Reunião
+  // 3. Reunião (campos estruturados com dataIso, horario e compatibilidade legada)
   const [reuGrupo, setReuGrupo] = useState<GrupoReuniao>(aviso.reuniao?.grupo || 'oracao_casas');
   const [reuGrupoNome, setReuGrupoNome] = useState(aviso.reuniao?.grupoNomePersonalizado || '');
-  const [reuDataTexto, setReuDataTexto] = useState(aviso.reuniao?.dataTexto || '');
-  const [reuLocal, setReuLocal] = useState(aviso.reuniao?.local || '');
-  const [reuResponsavel, setReuResponsavel] = useState(aviso.reuniao?.responsavel || '');
+  const [reuDataIso, setReuDataIso] = useState<string>(aviso.reuniao?.dataIso || '');
+  const [reuDataTextoLegado] = useState<string>(
+    aviso.reuniao?.dataIso ? '' : (aviso.reuniao?.dataTexto || '')
+  );
+  const [reuHorario, setReuHorario] = useState<string>(aviso.reuniao?.horario || '');
+  const [reuLocal, setReuLocal] = useState<string>(aviso.reuniao?.local || '');
+  const [reuResponsavel, setReuResponsavel] = useState<string>(aviso.reuniao?.responsavel || '');
 
   // 4. Geral
   const [gerTitulo, setGerTitulo] = useState(aviso.geral?.titulo || '');
@@ -83,13 +87,29 @@ const EditarAvisoForm: React.FC<{ aviso: AvisoItem; onClose: () => void }> = ({ 
         setErrorMsg('Informe o local da reunião.');
         return;
       }
+      if (!reuDataIso && !reuDataTextoLegado.trim()) {
+        setErrorMsg('Informe a data da reunião.');
+        return;
+      }
+
+      let dataIsoFinal: string | undefined = undefined;
+      let dataTextoFinal: string = '';
+
+      if (reuDataIso) {
+        dataIsoFinal = reuDataIso;
+        const amigavel = formatarDataIsoAmigavel(reuDataIso);
+        dataTextoFinal = reuHorario.trim() ? `${amigavel} às ${reuHorario.trim()}` : amigavel;
+      } else {
+        dataTextoFinal = reuDataTextoLegado.trim() || aviso.reuniao?.dataTexto || '';
+      }
+
       res = editarAviso(aviso.id, {
         reuniao: {
-          ...aviso.reuniao,
           grupo: reuGrupo,
           grupoNomePersonalizado: reuGrupo === 'outro' ? reuGrupoNome.trim() || undefined : undefined,
-          dataTexto: reuDataTexto.trim() || aviso.reuniao?.dataTexto || 'Data a confirmar',
-          horario: aviso.reuniao?.horario || '19h30',
+          dataIso: dataIsoFinal,
+          dataTexto: dataTextoFinal,
+          horario: reuHorario.trim(),
           local: reuLocal.trim(),
           responsavel: reuResponsavel.trim() || undefined,
         },
@@ -358,18 +378,41 @@ const EditarAvisoForm: React.FC<{ aviso: AvisoItem; onClose: () => void }> = ({ 
               </div>
             )}
 
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Data e Horário: <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={reuDataTexto}
-                onChange={(e) => setReuDataTexto(e.target.value)}
-                placeholder="Ex: Terça-feira (08/09) às 19h30"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
-              />
+            {/* Data e Horário Estruturados */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Data do Encontro: <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={reuDataIso}
+                  onChange={(e) => setReuDataIso(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
+                />
+                {reuDataIso ? (
+                  <div className="text-[10px] text-teal-400 font-semibold mt-1">
+                    {formatarDataIsoAmigavel(reuDataIso)}
+                  </div>
+                ) : reuDataTextoLegado ? (
+                  <div className="text-[10px] text-amber-400 font-medium mt-1">
+                    Data registrada: {reuDataTextoLegado}
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                  Horário (Opcional):
+                </label>
+                <input
+                  type="text"
+                  value={reuHorario}
+                  onChange={(e) => setReuHorario(e.target.value)}
+                  placeholder="Ex: 19h30, 20h00"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-400/20"
+                />
+              </div>
             </div>
 
             <div>

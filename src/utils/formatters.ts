@@ -172,3 +172,20 @@ export const formatHoraMinutosAtras = (isoDateString: string): string => {
     return '';
   }
 };
+
+/**
+ * Converte 'YYYY-MM-DD' em apresentação legível e amigável (ex: 'Terça-feira, 08/09')
+ */
+export const formatarDataIsoAmigavel = (isoDate?: string): string => {
+  if (!isoDate) return '';
+  try {
+    const d = new Date(isoDate + 'T12:00:00');
+    const diaMes = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+    const weekdayCapitalized = weekday.charAt(0).toUpperCase() + weekday.slice(1);
+    return `${weekdayCapitalized}, ${diaMes}`;
+  } catch {
+    return isoDate;
+  }
+};
+

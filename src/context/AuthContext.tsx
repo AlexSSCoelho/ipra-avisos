@@ -22,6 +22,7 @@ interface AuthContextType {
   /** Permite configurar o primeiro PIN em instalações existentes com admin mas sem PIN */
   configureMigrationPin: (pin: string) => { success: boolean; message?: string };
   updateAdminPin: (oldPin: string, newPin: string) => boolean;
+  importarObreirosOficiais: () => { success: boolean; message: string; count?: number };
   isAdmin: boolean;
 }
 
@@ -210,6 +211,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true };
   };
 
+  const importarObreirosOficiais = (): { success: boolean; message: string; count?: number } => {
+    if (!currentUser?.isAdmin) {
+      return {
+        success: false,
+        message: 'Apenas administradores autenticados podem importar a relação oficial de obreiros.',
+      };
+    }
+    const res = storageService.importarObreirosOficiais();
+    const updated = storageService.getObreiros();
+    setObreiros(updated);
+    return {
+      success: true,
+      message: res.added > 0 
+        ? `${res.added} obreiros oficiais importados com sucesso! Total na equipe: ${res.total}.`
+        : `Todos os obreiros oficiais já constam cadastrados. Total: ${res.total}.`,
+      count: res.added,
+    };
+  };
+
   // isAdmin baseado APENAS na propriedade explícita — cargo não concede admin
   const isAdmin = currentUser?.isAdmin === true;
 
@@ -227,6 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         bootstrapInitialAdmin,
         configureMigrationPin,
         updateAdminPin,
+        importarObreirosOficiais,
         isAdmin,
       }}
     >

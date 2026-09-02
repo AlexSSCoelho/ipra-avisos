@@ -20,7 +20,8 @@ interface AvisosContextType {
   avisosPendentes: AvisoItem[];
   avisosAnunciados: AvisoItem[];
   meusAvisosHoje: AvisoItem[];
-  adicionarAviso: (params: AddAvisoParams) => void;
+  isCultoEmAndamento: boolean;
+  adicionarAviso: (params: AddAvisoParams) => { success: boolean; message?: string };
   editarAviso: (id: string, params: EditAvisoParams) => { success: boolean; message?: string };
   marcarComoAnunciado: (id: string) => void;
   desmarcarComoAnunciado: (id: string) => void;
@@ -58,21 +59,31 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => unsubscribe();
   }, [isDirigente, soundEnabled, currentUser?.id]);
 
-  const currentCultoId = cultoAtivo?.id ?? null;
+  // Apenas considera sessão operacional ativa quando o culto tiver status 'em_andamento'
+  const isCultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
+  const currentCultoId = isCultoEmAndamento && cultoAtivo ? cultoAtivo.id : null;
   
-  // Avisos da sessão ativa do culto em andamento
+  // Avisos da sessão ativa do culto em andamento (vazio se o culto estiver finalizado ou ausente)
   const avisosCultoAtual = currentCultoId
     ? avisos.filter((a) => a.cultoId === currentCultoId)
     : [];
   const avisosPendentes = avisosCultoAtual.filter((a) => a.status === 'pendente');
   const avisosAnunciados = avisosCultoAtual.filter((a) => a.status === 'anunciado');
 
-  const meusAvisosHoje = currentUser
+  const meusAvisosHoje = currentUser && currentCultoId
     ? avisosCultoAtual.filter((a) => a.autorId === currentUser.id)
     : [];
 
-  const adicionarAviso = (params: AddAvisoParams) => {
-    if (!currentUser || !currentCultoId) return;
+  const adicionarAviso = (params: AddAvisoParams): { success: boolean; message?: string } => {
+    if (!isCultoEmAndamento || !currentCultoId) {
+      return {
+        success: false,
+        message: 'Não é possível transmitir avisos: não há nenhum culto em andamento no momento.',
+      };
+    }
+    if (!currentUser) {
+      return { success: false, message: 'Usuário não identificado.' };
+    }
 
     const novoAviso: AvisoItem = {
       id: `aviso_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -95,6 +106,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (soundEnabled) {
       audioFeedback.playSuccessSound();
     }
+    return { success: true };
   };
 
   const marcarComoAnunciado = (id: string) => {
@@ -126,6 +138,11 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const excluirAviso = (id: string): { success: boolean; message?: string } => {
+    // Não permite operações da sessão ativa se o culto já estiver finalizado (salvo admin)
+    if (!isCultoEmAndamento && !isAdmin) {
+      return { success: false, message: 'Não é possível cancelar avisos de um culto encerrado.' };
+    }
+
     const aviso = avisos.find((a) => a.id === id);
     if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
 
@@ -146,6 +163,11 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const editarAviso = (id: string, params: EditAvisoParams): { success: boolean; message?: string } => {
+    // Não permite editar avisos como sessão ativa se o culto estiver finalizado (salvo admin)
+    if (!isCultoEmAndamento && !isAdmin) {
+      return { success: false, message: 'Não é possível editar avisos de um culto encerrado.' };
+    }
+
     const aviso = avisos.find((a) => a.id === id);
     if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
 
@@ -186,7 +208,6 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return { success: true };
   };
 
-
   const totalPendentes = avisosPendentes.length;
   const totalAnunciados = avisosAnunciados.length;
   const totalVisitantes = avisosCultoAtual.filter((a) => a.tipo === 'visitante').length;
@@ -202,6 +223,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         avisosPendentes,
         avisosAnunciados,
         meusAvisosHoje,
+        isCultoEmAndamento,
         adicionarAviso,
         editarAviso,
         marcarComoAnunciado,

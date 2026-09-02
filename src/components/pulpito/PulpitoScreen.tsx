@@ -58,10 +58,10 @@ export const PulpitoScreen: React.FC = () => {
             </span>
             <div className="min-w-0">
               <div className="text-xs sm:text-sm font-black text-white truncate leading-tight">
-                {dirigenteAtualNome}
+                {cultoAtivo?.status === 'em_andamento' ? dirigenteAtualNome : 'Púlpito'}
               </div>
               <div className="text-[10px] text-amber-400 font-medium truncate">
-                {cultoAtivo?.nomeCulto || 'Culto Ativo'}
+                {cultoAtivo?.status === 'em_andamento' ? cultoAtivo.nomeCulto : 'Nenhum culto em andamento'}
               </div>
             </div>
           </div>
@@ -118,10 +118,10 @@ export const PulpitoScreen: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <div className="font-black text-sm sm:text-base leading-tight text-white truncate">
-                  {dirigenteAtualNome}
+                  {cultoAtivo?.status === 'em_andamento' ? dirigenteAtualNome : 'Púlpito'}
                 </div>
                 <div className="text-xs text-amber-400/90 font-medium truncate mt-0.5">
-                  {cultoAtivo?.nomeCulto || 'Culto Ativo'}
+                  {cultoAtivo?.status === 'em_andamento' ? cultoAtivo.nomeCulto : 'Nenhum Culto em Andamento'}
                 </div>
               </div>
             </div>
@@ -218,14 +218,16 @@ export const PulpitoScreen: React.FC = () => {
             <CheckCircle2 className="w-7 h-7" />
           </div>
           <div className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white">
-            {activeTab === 'pendentes'
-              ? 'Tudo lido! Nenhum aviso pendente'
-              : 'Nenhum aviso anunciado nesta sessão'}
+            {cultoAtivo?.status === 'em_andamento'
+              ? (activeTab === 'pendentes' ? 'Tudo lido! Nenhum aviso pendente' : 'Nenhum aviso anunciado nesta sessão')
+              : 'Nenhum culto em andamento'}
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto leading-relaxed">
-            {activeTab === 'pendentes'
-              ? 'Assim que os diáconos transmitirem novos avisos durante o culto, eles aparecerão aqui automaticamente.'
-              : 'Os avisos já falados no púlpito ficam salvos aqui.'}
+            {cultoAtivo?.status === 'em_andamento'
+              ? (activeTab === 'pendentes'
+                  ? 'Assim que os diáconos transmitirem novos avisos durante o culto, eles aparecerão aqui automaticamente.'
+                  : 'Os avisos já falados no púlpito ficam salvos aqui.')
+              : 'Inicie um culto para receber avisos em tempo real enviados pelos diáconos. Para consultar sessões anteriores, acesse a aba Histórico.'}
           </p>
         </div>
       ) : (
@@ -241,9 +243,20 @@ export const PulpitoScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Ação de Concluir Culto no Rodapé */}
+      {/* Ação de Concluir Culto no Rodapé (apenas quando o culto estiver em andamento) */}
       <div className="pt-2">
-        {!showEncerrarConfirm ? (
+        {modoFocadoPulpito && cultoAtivo?.status !== 'em_andamento' && (
+          <button
+            type="button"
+            onClick={() => setModoFocadoPulpito(false)}
+            className="w-full py-3 px-4 rounded-2xl border border-slate-700 bg-slate-900 text-slate-300 hover:text-white text-xs sm:text-sm font-bold flex items-center justify-center gap-2 transition-all touch-target"
+          >
+            <Minimize2 className="w-4 h-4 text-amber-400" />
+            <span>Sair do Modo Focado</span>
+          </button>
+        )}
+
+        {cultoAtivo?.status === 'em_andamento' && !showEncerrarConfirm && (
           <div className="flex flex-col sm:flex-row gap-2">
             {modoFocadoPulpito && (
               <button
@@ -264,7 +277,9 @@ export const PulpitoScreen: React.FC = () => {
               <span>Concluir Culto de Hoje</span>
             </button>
           </div>
-        ) : (
+        )}
+
+        {cultoAtivo?.status === 'em_andamento' && showEncerrarConfirm && (
           <div className="bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800 rounded-2xl p-4 space-y-3 shadow-xs animate-in fade-in">
             <div className="text-xs sm:text-sm text-rose-900 dark:text-rose-200 font-bold text-center">
               Deseja realmente concluir a transmissão deste culto?

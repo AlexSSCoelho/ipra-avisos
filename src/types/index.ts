@@ -30,7 +30,7 @@ export interface CultoAtivo {
   horarioInicio: string;
   dirigenteId: string;
   dirigenteNome: string;
-  dirigenteCargo: CargoObreiro;
+  dirigenteCargo?: CargoObreiro;
   status: 'em_andamento' | 'finalizado';
 }
 

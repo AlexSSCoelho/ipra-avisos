@@ -44,28 +44,8 @@ class StorageService {
   }
 
   private initLocalData() {
-    if (typeof window === 'undefined') return;
-    try {
-      const existing = localStorage.getItem(STORAGE_KEYS.OBREIROS);
-      if (!existing) {
-        localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(REAL_OBREIROS_IPRA));
-      } else {
-        const parsed: Obreiro[] = JSON.parse(existing);
-        if (parsed.length === 0) {
-          localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(REAL_OBREIROS_IPRA));
-        } else {
-          // Garante que os obreiros oficiais da IPRA estejam cadastrados preservando registros existentes
-          const existingIds = new Set(parsed.map((o) => o.id));
-          const toAdd = REAL_OBREIROS_IPRA.filter((ro) => !existingIds.has(ro.id));
-          if (toAdd.length > 0) {
-            const merged = [...parsed, ...toAdd];
-            localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(merged));
-          }
-        }
-      }
-    } catch {
-      // Ignora erro de JSON
-    }
+    // Instalação limpa deve iniciar com zero obreiros, exigindo bootstrap com PIN.
+    // A relação oficial de obreiros é importada exclusivamente via ação administrativa autorizada.
   }
 
 
@@ -155,6 +135,28 @@ class StorageService {
     this.saveObreiros(updated);
   }
 
+  /**
+   * Importa a relação oficial de obreiros da IPRA Auriflama de forma controlada,
+   * preservando registros existentes e sem sobrescrever administradores já configurados.
+   */
+  public importarObreirosOficiais(): { added: number; total: number } {
+    const existing = this.getObreiros();
+    const existingIds = new Set(existing.map((o) => o.id));
+    const existingNames = new Set(existing.map((o) => o.nome.toLowerCase().trim()));
+
+    const toAdd = REAL_OBREIROS_IPRA.filter(
+      (ro) => !existingIds.has(ro.id) && !existingNames.has(ro.nome.toLowerCase().trim())
+    );
+
+    if (toAdd.length > 0) {
+      const merged = [...existing, ...toAdd];
+      this.saveObreiros(merged);
+      return { added: toAdd.length, total: merged.length };
+    }
+
+    return { added: 0, total: existing.length };
+  }
+
   // --- Culto Ativo ---
   public getCultoAtivo(): CultoAtivo | null {
     try {
@@ -188,8 +190,13 @@ class StorageService {
 
     if (this.firestore) {
       try {
+        // 1. Ponteiro da sessão ativa atual
         const cultoDoc = doc(this.firestore, 'cultos', 'ativo');
         setDoc(cultoDoc, culto, { merge: true });
+
+        // 2. Persiste a sessão individual na coleção 'cultos' por id para preservação do catálogo histórico
+        const sessionDoc = doc(this.firestore, 'cultos', culto.id);
+        setDoc(sessionDoc, culto, { merge: true });
       } catch (err) {
         console.warn('Erro ao sincronizar culto com Firebase:', err);
       }
@@ -215,6 +222,7 @@ class StorageService {
       }
 
       // Reconciliação retrocompatível: garante que avisos passados com cultoId tenham uma sessão registrada
+      // IMPORTANTE: Não fabricar dados sintéticos (como nomes de dirigentes ou cultos inventados)
       const avisos = this.getAvisos();
       const cultoIdsExistentes = new Set(historico.map((c) => c.id));
       const avisosPorCultoId = new Map<string, AvisoItem[]>();
@@ -230,15 +238,15 @@ class StorageService {
       let precisaSalvar = false;
       for (const [cid, itens] of avisosPorCultoId.entries()) {
         const primeiro = itens[0];
-        const dataCulto = primeiro?.criadoEm ? primeiro.criadoEm.split('T')[0] : new Date().toISOString().split('T')[0];
+        const dataCulto = primeiro?.criadoEm ? primeiro.criadoEm.split('T')[0] : '';
         const sintetico: CultoAtivo = {
           id: cid,
           data: dataCulto,
-          nomeCulto: 'Culto de Celebração',
-          horarioInicio: 'Histórico',
-          dirigenteId: 'ipra_pastor',
-          dirigenteNome: 'Pr. Cláudio Lísias',
-          dirigenteCargo: 'pastor',
+          nomeCulto: 'Sessão Anterior (Sem metadados cadastrados)',
+          horarioInicio: '',
+          dirigenteId: '',
+          dirigenteNome: 'Não informado',
+          dirigenteCargo: undefined,
           status: 'finalizado',
         };
         historico.push(sintetico);
@@ -481,15 +489,50 @@ class StorageService {
   public subscribeToCulto(callback: (culto: CultoAtivo | null) => void): () => void {
     this.cultoListeners.add(callback);
 
-    let unsubFirestore: (() => void) | null = null;
+    let unsubAtivo: (() => void) | null = null;
+    let unsubColecao: (() => void) | null = null;
     if (this.firestore) {
       try {
         const docRef = doc(this.firestore, 'cultos', 'ativo');
-        unsubFirestore = onSnapshot(docRef, (snapshot) => {
+        unsubAtivo = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data() as CultoAtivo;
             localStorage.setItem(STORAGE_KEYS.CULTO_ATIVO, JSON.stringify(data));
             this.cultoListeners.forEach((cb) => cb(data));
+          }
+        });
+
+        // Sincroniza a coleção de sessões históricas da nuvem para clientes novos ou reinstalações
+        const cultosCol = collection(this.firestore, 'cultos');
+        unsubColecao = onSnapshot(cultosCol, (snapshot) => {
+          const remoteCultos: CultoAtivo[] = [];
+          snapshot.forEach((d) => {
+            if (d.id !== 'ativo') {
+              remoteCultos.push(d.data() as CultoAtivo);
+            }
+          });
+          if (remoteCultos.length > 0) {
+            try {
+              const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+              const localList: CultoAtivo[] = raw ? JSON.parse(raw) : [];
+              const localMap = new Map<string, CultoAtivo>(localList.map((c) => [c.id, c]));
+
+              for (const rc of remoteCultos) {
+                if (!localMap.has(rc.id)) {
+                  localMap.set(rc.id, rc);
+                }
+              }
+
+              const merged = Array.from(localMap.values());
+              merged.sort((a, b) => {
+                if (a.status === 'em_andamento' && b.status !== 'em_andamento') return -1;
+                if (b.status === 'em_andamento' && a.status !== 'em_andamento') return 1;
+                return (b.data || '').localeCompare(a.data || '') || b.id.localeCompare(a.id);
+              });
+              localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(merged));
+            } catch {
+              // Ignore
+            }
           }
         });
       } catch (e) {
@@ -520,7 +563,8 @@ class StorageService {
 
     return () => {
       this.cultoListeners.delete(callback);
-      if (unsubFirestore) unsubFirestore();
+      if (unsubAtivo) unsubAtivo();
+      if (unsubColecao) unsubColecao();
       if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
       window.removeEventListener('storage', handleStorage);
     };
