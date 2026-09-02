@@ -43,7 +43,7 @@ export const AdminPassModal: React.FC<AdminPassModalProps> = ({
       }
 
       if (!verifyAdminPin(pin)) {
-        setError('Senha incorreta. (Padrão inicial: 1234)');
+        setError('Senha administrativa incorreta.');
         return;
       }
     }
@@ -132,7 +132,7 @@ export const AdminPassModal: React.FC<AdminPassModalProps> = ({
           {!isAdmin && (
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Senha de Autorização:
+                Senha Administrativa:
               </label>
               <div className="relative">
                 <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -141,7 +141,7 @@ export const AdminPassModal: React.FC<AdminPassModalProps> = ({
                   inputMode="numeric"
                   value={pin}
                   onChange={(e) => setPin(e.target.value)}
-                  placeholder="Digite a senha (padrão: 1234)"
+                  placeholder="Digite a senha administrativa"
                   className="w-full pl-8.5 pr-3 py-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
                 />
               </div>

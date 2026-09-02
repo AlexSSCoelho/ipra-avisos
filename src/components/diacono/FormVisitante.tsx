@@ -21,8 +21,8 @@ export const FormVisitante: React.FC = () => {
       visitante: {
         nome: nome.trim(),
         genero,
-        cidade: cidade.trim() || 'Auriflama',
-        igreja: igreja.trim() || 'Primeira Visita',
+        cidade: cidade.trim() || undefined,
+        igreja: igreja.trim() || undefined,
         observacao: observacao.trim() || undefined,
       },
     });

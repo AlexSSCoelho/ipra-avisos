@@ -31,7 +31,7 @@ export const FormOracao: React.FC = () => {
       oracao: {
         nomePessoa: nomePessoa.trim(),
         categoria,
-        motivo: motivo.trim() || 'Pedido de oração e intercessão.',
+        motivo: motivo.trim() || undefined,
         urgente,
       },
     });

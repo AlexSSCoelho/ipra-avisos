@@ -1,4 +1,5 @@
 import type { Obreiro, CultoAtivo, AvisoItem, FirebaseConfig } from '../types';
+import { REAL_OBREIROS_IPRA } from '../data/initialObreiros';
 import { initializeApp, getApps } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
 import { 
@@ -18,6 +19,7 @@ import type { Firestore } from 'firebase/firestore';
 export const STORAGE_KEYS = {
   OBREIROS: 'ipra_obreiros_v1',
   CULTO_ATIVO: 'ipra_culto_ativo_v1',
+  HISTORICO_CULTOS: 'ipra_historico_cultos_v1',
   AVISOS: 'ipra_avisos_v1',
   FIREBASE_CONFIG: 'ipra_firebase_config_v1',
   ADMIN_PIN: 'ipra_admin_pin_v1',
@@ -31,6 +33,7 @@ class StorageService {
   private channel: BroadcastChannel | null = null;
   private avisoListeners = new Set<(avisos: AvisoItem[]) => void>();
   private cultoListeners = new Set<(culto: CultoAtivo | null) => void>();
+  private historicoListeners = new Set<(historico: CultoAtivo[]) => void>();
   private obreiroListeners = new Set<(obreiros: Obreiro[]) => void>();
 
   constructor() {
@@ -42,9 +45,8 @@ class StorageService {
   }
 
   private initLocalData() {
-    // Garante que as chaves existam mas NÃO inicializa com dados fictícios.
-    // Instalação nova começa em estado vazio; o administrador cadastra os dados reais.
-    if (typeof window === 'undefined') return;
+    // Instalação limpa deve iniciar com zero obreiros, exigindo bootstrap com PIN.
+    // A relação oficial de obreiros é importada exclusivamente via ação administrativa autorizada.
   }
 
 
@@ -86,8 +88,12 @@ class StorageService {
     }
   }
 
-  public getAdminPin(): string {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || '1234';
+  public getAdminPin(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) ?? null;
+  }
+
+  public hasPinConfigured(): boolean {
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) !== null;
   }
 
   public setAdminPin(newPin: string) {
@@ -130,6 +136,28 @@ class StorageService {
     this.saveObreiros(updated);
   }
 
+  /**
+   * Importa a relação oficial de obreiros da IPRA Auriflama de forma controlada,
+   * preservando registros existentes e sem sobrescrever administradores já configurados.
+   */
+  public importarObreirosOficiais(): { added: number; total: number } {
+    const existing = this.getObreiros();
+    const existingIds = new Set(existing.map((o) => o.id));
+    const existingNames = new Set(existing.map((o) => o.nome.toLowerCase().trim()));
+
+    const toAdd = REAL_OBREIROS_IPRA.filter(
+      (ro) => !existingIds.has(ro.id) && !existingNames.has(ro.nome.toLowerCase().trim())
+    );
+
+    if (toAdd.length > 0) {
+      const merged = [...existing, ...toAdd];
+      this.saveObreiros(merged);
+      return { added: toAdd.length, total: merged.length };
+    }
+
+    return { added: 0, total: existing.length };
+  }
+
   // --- Culto Ativo ---
   public getCultoAtivo(): CultoAtivo | null {
     try {
@@ -142,31 +170,117 @@ class StorageService {
 
   public saveCultoAtivo(culto: CultoAtivo) {
     localStorage.setItem(STORAGE_KEYS.CULTO_ATIVO, JSON.stringify(culto));
+
+    // Atualiza também a lista histórica de cultos
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+      const list: CultoAtivo[] = raw ? JSON.parse(raw) : [];
+      const index = list.findIndex((c) => c.id === culto.id);
+      if (index >= 0) {
+        list[index] = culto;
+      } else {
+        list.unshift(culto);
+      }
+      localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(list));
+    } catch {
+      // Ignora erro de JSON
+    }
+
     this.cultoListeners.forEach((cb) => cb(culto));
     this.broadcast('CULTO_UPDATED', culto);
 
     if (this.firestore) {
       try {
+        // 1. Ponteiro da sessão ativa atual
         const cultoDoc = doc(this.firestore, 'cultos', 'ativo');
         setDoc(cultoDoc, culto, { merge: true });
+
+        // 2. Persiste a sessão individual na coleção 'cultos' por id para preservação do catálogo histórico
+        const sessionDoc = doc(this.firestore, 'cultos', culto.id);
+        setDoc(sessionDoc, culto, { merge: true });
       } catch (err) {
         console.warn('Erro ao sincronizar culto com Firebase:', err);
       }
     }
   }
 
-  // Troca o dirigente garantindo a regra de 1 dirigente ativo por vez
-  public setDirigenteDoCulto(obreiro: Obreiro) {
-    const culto = this.getCultoAtivo() || {
-      id: `culto_${Date.now()}`,
-      data: new Date().toISOString().split('T')[0],
-      nomeCulto: 'Culto da Igreja',
-      horarioInicio: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      dirigenteId: obreiro.id,
-      dirigenteNome: obreiro.nome,
-      dirigenteCargo: obreiro.cargo,
-      status: 'em_andamento',
-    };
+  public getHistoricoCultos(): CultoAtivo[] {
+    try {
+      let historico: CultoAtivo[] = [];
+      const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+      if (raw) {
+        historico = JSON.parse(raw);
+      }
+
+      const cultoAtivo = this.getCultoAtivo();
+      if (cultoAtivo) {
+        const exists = historico.some((c) => c.id === cultoAtivo.id);
+        if (!exists) {
+          historico = [cultoAtivo, ...historico];
+        } else {
+          historico = historico.map((c) => (c.id === cultoAtivo.id ? cultoAtivo : c));
+        }
+      }
+
+      // Reconciliação retrocompatível: garante que avisos passados com cultoId tenham uma sessão registrada
+      // IMPORTANTE: Não fabricar dados sintéticos (como nomes de dirigentes ou cultos inventados)
+      const avisos = this.getAvisos();
+      const cultoIdsExistentes = new Set(historico.map((c) => c.id));
+      const avisosPorCultoId = new Map<string, AvisoItem[]>();
+
+      for (const a of avisos) {
+        if (a.cultoId && !cultoIdsExistentes.has(a.cultoId)) {
+          const list = avisosPorCultoId.get(a.cultoId) || [];
+          list.push(a);
+          avisosPorCultoId.set(a.cultoId, list);
+        }
+      }
+
+      let precisaSalvar = false;
+      for (const [cid, itens] of avisosPorCultoId.entries()) {
+        const primeiro = itens[0];
+        const dataCulto = primeiro?.criadoEm ? primeiro.criadoEm.split('T')[0] : '';
+        const sintetico: CultoAtivo = {
+          id: cid,
+          data: dataCulto,
+          nomeCulto: 'Sessão Anterior (Sem metadados cadastrados)',
+          horarioInicio: '',
+          dirigenteId: '',
+          dirigenteNome: 'Não informado',
+          dirigenteCargo: undefined,
+          status: 'finalizado',
+        };
+        historico.push(sintetico);
+        precisaSalvar = true;
+      }
+
+      // Ordenar por status (em andamento primeiro) e depois por data/id decrescente
+      historico.sort((a, b) => {
+        if (a.status === 'em_andamento' && b.status !== 'em_andamento') return -1;
+        if (b.status === 'em_andamento' && a.status !== 'em_andamento') return 1;
+        return (b.data || '').localeCompare(a.data || '') || b.id.localeCompare(a.id);
+      });
+
+      if (precisaSalvar) {
+        localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(historico));
+      }
+
+      return historico;
+    } catch {
+      return [];
+    }
+  }
+
+  public saveHistoricoCultos(cultos: CultoAtivo[]) {
+    localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(cultos));
+    this.historicoListeners.forEach((cb) => cb(cultos));
+    this.broadcast('HISTORICO_UPDATED', cultos);
+  }
+
+  // Troca o dirigente de um culto existente. NÃO cria culto novo.
+  public setDirigenteDoCulto(obreiro: Obreiro): boolean {
+    const culto = this.getCultoAtivo();
+    if (!culto) return false; // sem culto ativo → operação inválida
 
     const updatedCulto: CultoAtivo = {
       ...culto,
@@ -177,7 +291,9 @@ class StorageService {
     };
 
     this.saveCultoAtivo(updatedCulto);
+    return true;
   }
+
 
   // --- Avisos ---
   public getAvisos(): AvisoItem[] {
@@ -235,6 +351,44 @@ class StorageService {
         console.warn('Erro ao atualizar status no Firestore:', err);
       }
     }
+  }
+
+  public updateAvisoContent(id: string, updates: Partial<AvisoItem>): boolean {
+    const avisos = this.getAvisos();
+    const target = avisos.find((a) => a.id === id);
+    if (!target || target.status !== 'pendente') {
+      return false;
+    }
+
+    const updated = avisos.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          visitante: updates.visitante !== undefined ? updates.visitante : item.visitante,
+          oracao: updates.oracao !== undefined ? updates.oracao : item.oracao,
+          reuniao: updates.reuniao !== undefined ? updates.reuniao : item.reuniao,
+          geral: updates.geral !== undefined ? updates.geral : item.geral,
+        };
+      }
+      return item;
+    });
+    this.saveAvisos(updated);
+
+    if (this.firestore) {
+      try {
+        const avisoDoc = doc(this.firestore, 'avisos', id);
+        const patch: Record<string, unknown> = {};
+        if (updates.visitante !== undefined) patch.visitante = updates.visitante;
+        if (updates.oracao !== undefined) patch.oracao = updates.oracao;
+        if (updates.reuniao !== undefined) patch.reuniao = updates.reuniao;
+        if (updates.geral !== undefined) patch.geral = updates.geral;
+        updateDoc(avisoDoc, patch);
+      } catch (err) {
+        console.warn('Erro ao atualizar conteúdo no Firestore:', err);
+      }
+    }
+
+    return true;
   }
 
   public deleteAviso(id: string) {
@@ -338,15 +492,71 @@ class StorageService {
   public subscribeToCulto(callback: (culto: CultoAtivo | null) => void): () => void {
     this.cultoListeners.add(callback);
 
-    let unsubFirestore: (() => void) | null = null;
+    let unsubAtivo: (() => void) | null = null;
+    let unsubColecao: (() => void) | null = null;
     if (this.firestore) {
       try {
         const docRef = doc(this.firestore, 'cultos', 'ativo');
-        unsubFirestore = onSnapshot(docRef, (snapshot) => {
+        unsubAtivo = onSnapshot(docRef, (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data() as CultoAtivo;
             localStorage.setItem(STORAGE_KEYS.CULTO_ATIVO, JSON.stringify(data));
             this.cultoListeners.forEach((cb) => cb(data));
+          }
+        });
+
+        // Sincroniza a coleção de sessões históricas da nuvem para clientes novos ou reinstalações
+        const cultosCol = collection(this.firestore, 'cultos');
+        unsubColecao = onSnapshot(cultosCol, (snapshot) => {
+          const remoteCultos: CultoAtivo[] = [];
+          snapshot.forEach((d) => {
+            if (d.id !== 'ativo') {
+              remoteCultos.push(d.data() as CultoAtivo);
+            }
+          });
+          if (remoteCultos.length > 0) {
+            try {
+              const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+              const localList: CultoAtivo[] = raw ? JSON.parse(raw) : [];
+              const localMap = new Map<string, CultoAtivo>(localList.map((c) => [c.id, c]));
+
+              for (const rc of remoteCultos) {
+                const local = localMap.get(rc.id);
+                if (!local) {
+                  // Sessão remota nova (preserva também qualquer sessão local que ainda não esteja na nuvem)
+                  localMap.set(rc.id, rc);
+                } else {
+                  // O documento remoto real de cultos/{cultoId} é autoritativo sobre placeholder ou metadado incompleto
+                  const isLocalPlaceholder =
+                    local.nomeCulto === 'Sessão Anterior (Sem metadados cadastrados)' ||
+                    local.dirigenteNome === 'Não informado' ||
+                    !local.dirigenteNome ||
+                    !local.horarioInicio;
+
+                  const isRemoteReal =
+                    rc.nomeCulto !== 'Sessão Anterior (Sem metadados cadastrados)' &&
+                    rc.dirigenteNome !== 'Não informado' &&
+                    Boolean(rc.dirigenteNome);
+
+                  if (isLocalPlaceholder || isRemoteReal) {
+                    localMap.set(rc.id, {
+                      ...local,
+                      ...rc,
+                    });
+                  }
+                }
+              }
+
+              const merged = Array.from(localMap.values());
+              merged.sort((a, b) => {
+                if (a.status === 'em_andamento' && b.status !== 'em_andamento') return -1;
+                if (b.status === 'em_andamento' && a.status !== 'em_andamento') return 1;
+                return (b.data || '').localeCompare(a.data || '') || b.id.localeCompare(a.id);
+              });
+              this.saveHistoricoCultos(merged);
+            } catch {
+              // Ignore
+            }
           }
         });
       } catch (e) {
@@ -377,7 +587,39 @@ class StorageService {
 
     return () => {
       this.cultoListeners.delete(callback);
-      if (unsubFirestore) unsubFirestore();
+      if (unsubAtivo) unsubAtivo();
+      if (unsubColecao) unsubColecao();
+      if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }
+
+  public subscribeToHistoricoCultos(callback: (historico: CultoAtivo[]) => void): () => void {
+    this.historicoListeners.add(callback);
+
+    const handleBroadcast = (event: MessageEvent) => {
+      if (event.data?.type === 'HISTORICO_UPDATED') {
+        callback(event.data.payload);
+      }
+    };
+
+    if (this.channel) {
+      this.channel.addEventListener('message', handleBroadcast);
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEYS.HISTORICO_CULTOS && event.newValue) {
+        try {
+          callback(JSON.parse(event.newValue));
+        } catch {
+          // Ignore
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      this.historicoListeners.delete(callback);
       if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
       window.removeEventListener('storage', handleStorage);
     };

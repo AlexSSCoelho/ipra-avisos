@@ -1,10 +1,13 @@
-import React from 'react';
-import { Clock, CheckCircle2, Trash2, User, Heart, CalendarDays, Megaphone } from 'lucide-react';
+import React, { useState } from 'react';
+import { Clock, CheckCircle2, Trash2, Pencil, User, Heart, CalendarDays, Megaphone } from 'lucide-react';
 import { useAvisos } from '../../context/AvisosContext';
-import { formatHoraMinutosAtras, getTipoAvisoLabel } from '../../utils/formatters';
+import { formatHoraMinutosAtras, getTipoAvisoLabel, getCategoriaOracaoLabel } from '../../utils/formatters';
+import type { AvisoItem } from '../../types';
+import { EditarAvisoModal } from './EditarAvisoModal';
 
 export const MeusAvisosHoje: React.FC = () => {
   const { meusAvisosHoje, excluirAviso } = useAvisos();
+  const [avisoEmEdicao, setAvisoEmEdicao] = useState<AvisoItem | null>(null);
 
   if (meusAvisosHoje.length === 0) {
     return (
@@ -92,9 +95,16 @@ export const MeusAvisosHoje: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.visitante.nome}
                     </span>
-                    <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
-                      {aviso.visitante.cidade} • {aviso.visitante.igreja}
-                    </div>
+                    {[aviso.visitante.cidade, aviso.visitante.igreja].filter(Boolean).length > 0 && (
+                      <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
+                        {[aviso.visitante.cidade, aviso.visitante.igreja].filter(Boolean).join(' • ')}
+                      </div>
+                    )}
+                    {aviso.visitante.observacao && (
+                      <div className="text-slate-600 dark:text-slate-400 text-xs mt-1">
+                        Obs: {aviso.visitante.observacao}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -103,9 +113,16 @@ export const MeusAvisosHoje: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.oracao.nomePessoa}
                     </span>
-                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 italic bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 leading-relaxed">
-                      "{aviso.oracao.motivo}"
-                    </p>
+                    {aviso.oracao.categoria && (
+                      <div className="text-xs text-amber-600 dark:text-amber-400 font-bold mt-0.5">
+                        Intercessão: {getCategoriaOracaoLabel(aviso.oracao.categoria)}
+                      </div>
+                    )}
+                    {aviso.oracao.motivo && (
+                      <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 italic bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 leading-relaxed">
+                        "{aviso.oracao.motivo}"
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -117,6 +134,11 @@ export const MeusAvisosHoje: React.FC = () => {
                     <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
                       Local: {aviso.reuniao.local}
                     </div>
+                    {aviso.reuniao.responsavel && (
+                      <div className="text-slate-500 dark:text-slate-400 text-xs mt-0.5 font-medium">
+                        Responsável: {aviso.reuniao.responsavel}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -125,25 +147,48 @@ export const MeusAvisosHoje: React.FC = () => {
                     <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.geral.titulo}
                     </span>
-                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 leading-relaxed">
-                      {aviso.geral.descricao}
-                    </p>
+                    {aviso.geral.destinatario && (
+                      <div className="text-xs font-bold text-blue-600 dark:text-blue-400 mt-0.5">
+                        Público: {aviso.geral.destinatario}
+                      </div>
+                    )}
+                    {aviso.geral.descricao && (
+                      <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1 leading-relaxed">
+                        {aviso.geral.descricao}
+                      </p>
+                    )}
+                    {aviso.geral.dataEvento && (
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        Quando: {aviso.geral.dataEvento}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               {!isAnunciado && (
-                <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAvisoEmEdicao(aviso)}
+                    className="text-xs text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300 flex items-center gap-1.5 font-bold px-2.5 py-1.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-950/40 transition-colors touch-target"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                    <span>Editar</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
                       if (window.confirm('Deseja cancelar o envio deste aviso?')) {
-                        excluirAviso(aviso.id);
+                        const result = excluirAviso(aviso.id);
+                        if (!result.success && result.message) {
+                          alert(result.message);
+                        }
                       }
                     }}
-                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1.5 font-bold px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1.5 font-bold px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors touch-target"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                     <span>Cancelar Envio</span>
                   </button>
                 </div>
@@ -152,6 +197,13 @@ export const MeusAvisosHoje: React.FC = () => {
           );
         })}
       </div>
+
+      {/* Modal de Edição de Aviso Pendente */}
+      <EditarAvisoModal
+        isOpen={Boolean(avisoEmEdicao)}
+        aviso={avisoEmEdicao}
+        onClose={() => setAvisoEmEdicao(null)}
+      />
     </div>
   );
 };

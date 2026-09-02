@@ -12,9 +12,53 @@ import type { TipoAviso } from '../../types';
 
 export const DiaconoDashboard: React.FC = () => {
   const { currentUser } = useAuth();
-  const { dirigenteAtualNome } = useCulto();
+  const { cultoAtivo, dirigenteAtualNome } = useCulto();
 
   const [activeCategory, setActiveCategory] = useState<TipoAviso>('visitante');
+
+  const isCultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
+
+  if (!isCultoEmAndamento) {
+    return (
+      <div className="w-full max-w-2xl mx-auto px-3 py-6 space-y-4">
+        {/* Banner Ministerial */}
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-2xl p-3.5 text-white shadow-sm flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/30 flex items-center justify-center font-bold text-amber-400 text-sm shrink-0 shadow-inner">
+              {currentUser?.nome.charAt(0)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider truncate">
+                {getCargoLabel(currentUser?.cargo)}
+              </div>
+              <div className="font-bold text-sm sm:text-base leading-tight text-white truncate">
+                {currentUser?.nome}
+              </div>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+            Sem Culto Ativo
+          </span>
+        </div>
+
+        {/* Card Informativo de Bloqueio Operacional */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto shadow-inner">
+            <CalendarDays className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-base sm:text-lg font-black text-slate-900 dark:text-white">
+              Nenhum culto em andamento
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+              A anotação e transmissão de avisos ao Púlpito só fica disponível durante um culto ativo.
+              Aguarde a abertura da sessão pelo dirigente ou administrador para registrar novos avisos.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-2xl mx-auto px-3 py-3.5 space-y-3.5 overflow-x-hidden">

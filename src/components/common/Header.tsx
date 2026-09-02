@@ -4,32 +4,23 @@ import {
   Volume2, 
   VolumeX, 
   LogOut, 
-  PenSquare, 
   SlidersHorizontal, 
-  Archive, 
-  Tv, 
   ChevronDown, 
-  Sparkles,
-  Radio
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCulto } from '../../context/CultoContext';
 import { useAccessibility } from '../../context/AccessibilityContext';
-import { useAvisos } from '../../context/AvisosContext';
 import { getCargoLabel } from '../../utils/formatters';
 
-export type AppTabType = 'home' | 'diacono' | 'pulpito' | 'historico';
-
 interface HeaderProps {
-  currentTab: AppTabType;
-  setCurrentTab: (tab: AppTabType) => void;
+  onNavigateHome?: () => void;
   onOpenIniciarCultoModal?: () => void;
   onOpenSettingsModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  currentTab,
-  setCurrentTab,
+  onNavigateHome,
   onOpenIniciarCultoModal,
   onOpenSettingsModal,
 }) => {
@@ -40,28 +31,20 @@ export const Header: React.FC<HeaderProps> = ({
     soundEnabled, 
     setSoundEnabled 
   } = useAccessibility();
-  const { totalPendentes } = useAvisos();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
-
-  // 4 Abas padronizadas em ordem lógica e universal
-  const visibleTabs: { id: AppTabType; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'home', label: 'Início', icon: <Radio className="w-3.5 h-3.5 shrink-0" /> },
-    { id: 'diacono', label: 'Anotação', icon: <PenSquare className="w-3.5 h-3.5 shrink-0" /> },
-    { id: 'pulpito', label: 'Púlpito', icon: <Tv className="w-3.5 h-3.5 shrink-0" />, badge: totalPendentes },
-    { id: 'historico', label: 'Histórico', icon: <Archive className="w-3.5 h-3.5 shrink-0" /> },
-  ];
+  const cultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
 
   return (
-    <header className={`${isPulpitMode ? 'bg-black border-zinc-800 text-white' : 'bg-slate-900 text-white border-slate-800'} border-b sticky top-0 z-40 shadow-sm transition-colors duration-200 w-full max-w-full shrink-0`}>
+    <header className={`${isPulpitMode ? 'bg-black border-zinc-800 text-white' : 'bg-slate-900 text-white border-slate-800'} border-b sticky top-0 z-40 shadow-sm transition-colors duration-200 w-full max-w-full shrink-0 no-swipe`} data-no-swipe="true">
       
-      {/* Barra superior de status */}
+      {/* Barra superior compacta de status e identidade */}
       <div className="w-full max-w-2xl mx-auto px-3.5 py-2.5 flex items-center justify-between gap-2">
         
         {/* Identidade IPRA */}
         <button
           type="button"
-          onClick={() => setCurrentTab('home')}
+          onClick={onNavigateHome}
           className="flex items-center gap-2.5 min-w-0 text-left active:scale-95 transition-transform"
         >
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-800 to-slate-850 border border-slate-700/80 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
@@ -74,12 +57,12 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
               {isAdmin && (
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
-                  Master
+                  Admin
                 </span>
               )}
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
-              {cultoAtivo ? (
+              {cultoEmAndamento && cultoAtivo ? (
                 <>
                   <span className="relative flex h-2 w-2 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -157,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
                       )}
                       {isAdmin && (
                         <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 uppercase">
-                          Master
+                          Admin
                         </span>
                       )}
                     </div>
@@ -176,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Painel de Ajustes & Sistema</span>
                     </button>
 
-                    {(isAdmin || isDirigente) && onOpenIniciarCultoModal && (
+                    {isAdmin && onOpenIniciarCultoModal && (
                       <button
                         type="button"
                         onClick={() => {
@@ -207,36 +190,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         </div>
-      </div>
-
-      {/* Navegação por 4 Abas Fixas e Sincronizadas */}
-      <div 
-        className="w-full max-w-2xl mx-auto border-t border-slate-800/80 text-center grid bg-slate-950/30"
-        style={{ gridTemplateColumns: `repeat(${visibleTabs.length}, minmax(0, 1fr))` }}
-      >
-        {visibleTabs.map((tab) => {
-          const isActive = currentTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setCurrentTab(tab.id)}
-              className={`py-2.5 px-1 text-center text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 border-b-2 transition-all duration-150 active:scale-[0.98] truncate touch-target ${
-                isActive
-                  ? 'border-amber-400 text-amber-300 font-black bg-amber-400/10 shadow-xs'
-                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30'
-              }`}
-            >
-              {tab.icon}
-              <span className="truncate">{tab.label}</span>
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-rose-500 text-white shrink-0 shadow-xs">
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
       </div>
     </header>
   );

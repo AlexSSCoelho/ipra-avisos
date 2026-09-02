@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { AvisoItem, TipoAviso, VisitanteData, OracaoData, ReuniaoData, GeralData } from '../types';
+import type { AvisoItem, TipoAviso, VisitanteData, OracaoData, ReuniaoData, GeralData, EditAvisoParams } from '../types';
 import { storageService } from '../services/storageService';
 import { audioFeedback } from '../services/audioService';
 import { useAuth } from './AuthContext';
@@ -20,10 +20,12 @@ interface AvisosContextType {
   avisosPendentes: AvisoItem[];
   avisosAnunciados: AvisoItem[];
   meusAvisosHoje: AvisoItem[];
-  adicionarAviso: (params: AddAvisoParams) => void;
+  isCultoEmAndamento: boolean;
+  adicionarAviso: (params: AddAvisoParams) => { success: boolean; message?: string };
+  editarAviso: (id: string, params: EditAvisoParams) => { success: boolean; message?: string };
   marcarComoAnunciado: (id: string) => void;
   desmarcarComoAnunciado: (id: string) => void;
-  excluirAviso: (id: string) => void;
+  excluirAviso: (id: string) => { success: boolean; message?: string };
   totalPendentes: number;
   totalAnunciados: number;
   totalVisitantes: number;
@@ -57,21 +59,31 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => unsubscribe();
   }, [isDirigente, soundEnabled, currentUser?.id]);
 
-  const currentCultoId = cultoAtivo?.id ?? null;
+  // Apenas considera sessão operacional ativa quando o culto tiver status 'em_andamento'
+  const isCultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
+  const currentCultoId = isCultoEmAndamento && cultoAtivo ? cultoAtivo.id : null;
   
-  // Avisos da sessão ativa do culto em andamento
+  // Avisos da sessão ativa do culto em andamento (vazio se o culto estiver finalizado ou ausente)
   const avisosCultoAtual = currentCultoId
     ? avisos.filter((a) => a.cultoId === currentCultoId)
     : [];
   const avisosPendentes = avisosCultoAtual.filter((a) => a.status === 'pendente');
   const avisosAnunciados = avisosCultoAtual.filter((a) => a.status === 'anunciado');
 
-  const meusAvisosHoje = currentUser
+  const meusAvisosHoje = currentUser && currentCultoId
     ? avisosCultoAtual.filter((a) => a.autorId === currentUser.id)
     : [];
 
-  const adicionarAviso = (params: AddAvisoParams) => {
-    if (!currentUser || !currentCultoId) return;
+  const adicionarAviso = (params: AddAvisoParams): { success: boolean; message?: string } => {
+    if (!isCultoEmAndamento || !currentCultoId) {
+      return {
+        success: false,
+        message: 'Não é possível transmitir avisos: não há nenhum culto em andamento no momento.',
+      };
+    }
+    if (!currentUser) {
+      return { success: false, message: 'Usuário não identificado.' };
+    }
 
     const novoAviso: AvisoItem = {
       id: `aviso_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -94,9 +106,12 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (soundEnabled) {
       audioFeedback.playSuccessSound();
     }
+    return { success: true };
   };
 
   const marcarComoAnunciado = (id: string) => {
+    // Operação estritamente bloqueada quando não há culto em andamento (inclusive para admin)
+    if (!isCultoEmAndamento) return;
     // Apenas o dirigente ou administrador pode marcar como anunciado
     if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
@@ -114,6 +129,8 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const desmarcarComoAnunciado = (id: string) => {
+    // Operação estritamente bloqueada quando não há culto em andamento (inclusive para admin)
+    if (!isCultoEmAndamento) return;
     // Apenas o dirigente ou administrador pode desmarcar
     if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
@@ -124,10 +141,75 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     storageService.updateAvisoStatus(id, 'pendente');
   };
 
+  const excluirAviso = (id: string): { success: boolean; message?: string } => {
+    // Não permite operações da sessão ativa se o culto já estiver finalizado (inclusive para admin)
+    if (!isCultoEmAndamento) {
+      return { success: false, message: 'Não é possível cancelar avisos: não há culto em andamento no momento.' };
+    }
 
-  const excluirAviso = (id: string) => {
+    const aviso = avisos.find((a) => a.id === id);
+    if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
+
+    // Aviso já anunciado não pode ser excluído por este fluxo
+    if (aviso.status === 'anunciado') {
+      return { success: false, message: 'Um aviso já anunciado não pode ser cancelado.' };
+    }
+
+    // Apenas o autor (aviso pendente próprio) ou dirigente/admin podem excluir
+    const isAutor = currentUser?.id === aviso.autorId;
+    if (!isAutor && !isDirigente && !isAdmin) {
+      return { success: false, message: 'Sem permissão para cancelar este aviso.' };
+    }
+
     setAvisos((prev) => prev.filter((item) => item.id !== id));
     storageService.deleteAviso(id);
+    return { success: true };
+  };
+
+  const editarAviso = (id: string, params: EditAvisoParams): { success: boolean; message?: string } => {
+    // Não permite editar avisos como sessão ativa se o culto estiver finalizado (inclusive para admin)
+    if (!isCultoEmAndamento) {
+      return { success: false, message: 'Não é possível editar avisos: não há culto em andamento no momento.' };
+    }
+
+    const aviso = avisos.find((a) => a.id === id);
+    if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
+
+    // Aviso anunciado não pode ser editado
+    if (aviso.status === 'anunciado') {
+      return { success: false, message: 'Um aviso já anunciado não pode ser alterado.' };
+    }
+
+    // Apenas o autor (aviso próprio), dirigente do culto ativo ou admin podem editar
+    const isAutor = currentUser?.id === aviso.autorId;
+    if (!isAutor && !isDirigente && !isAdmin) {
+      return { success: false, message: 'Sem permissão para editar este aviso.' };
+    }
+
+    const updates: Partial<AvisoItem> = {
+      visitante: params.visitante !== undefined ? params.visitante : aviso.visitante,
+      oracao: params.oracao !== undefined ? params.oracao : aviso.oracao,
+      reuniao: params.reuniao !== undefined ? params.reuniao : aviso.reuniao,
+      geral: params.geral !== undefined ? params.geral : aviso.geral,
+    };
+
+    setAvisos((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ...updates,
+            }
+          : item
+      )
+    );
+
+    const ok = storageService.updateAvisoContent(id, updates);
+    if (!ok) {
+      return { success: false, message: 'Falha ao salvar a edição no armazenamento.' };
+    }
+
+    return { success: true };
   };
 
   const totalPendentes = avisosPendentes.length;
@@ -145,7 +227,9 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         avisosPendentes,
         avisosAnunciados,
         meusAvisosHoje,
+        isCultoEmAndamento,
         adicionarAviso,
+        editarAviso,
         marcarComoAnunciado,
         desmarcarComoAnunciado,
         excluirAviso,
