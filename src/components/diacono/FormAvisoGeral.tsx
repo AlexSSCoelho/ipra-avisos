@@ -55,25 +55,25 @@ export const FormAvisoGeral: React.FC = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl p-5 shadow-sm border border-slate-200 dark:border-slate-800 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 shadow-xs border border-slate-200/80 dark:border-slate-800 space-y-4 w-full max-w-full overflow-hidden transition-surface">
       
       {/* Banner de Sucesso */}
       {showSuccessToast && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 px-4 py-2.5 rounded-xl flex items-center gap-2 animate-in fade-in duration-150">
+        <div className="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 px-3.5 py-2.5 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 shadow-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold">
-            Comunicado transmitido ao Púlpito com sucesso.
+          <span className="text-xs font-bold">
+            Comunicado transmitido ao Púlpito com sucesso!
           </span>
         </div>
       )}
 
       {/* 1. Assunto / Título do Aviso */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-          <Tag className="w-3.5 h-3.5 text-slate-500" />
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Tag className="w-4 h-4 text-blue-500 dark:text-blue-400" />
           <span>Assunto do Comunicado: <span className="text-rose-500">*</span></span>
         </label>
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-1.5 no-swipe" data-no-swipe="true">
           {SUGESTOES_TITULO.map((t) => {
             const isSelected = titulo === t;
             return (
@@ -81,10 +81,10 @@ export const FormAvisoGeral: React.FC = () => {
                 key={t}
                 type="button"
                 onClick={() => setTitulo(t)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
                   isSelected
-                    ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white font-semibold shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-xs font-bold'
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 hover:border-slate-300'
                 }`}
               >
                 {t}
@@ -100,18 +100,18 @@ export const FormAvisoGeral: React.FC = () => {
             value={tituloPersonalizado}
             onChange={(e) => setTituloPersonalizado(e.target.value)}
             placeholder="Digite o título do comunicado"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 mt-1"
+            className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white mt-2 focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
           />
         )}
       </div>
 
       {/* 2. Destinatário */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-          <Users className="w-3.5 h-3.5 text-slate-500" />
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-blue-500 dark:text-blue-400" />
           <span>Público / Destinatário:</span>
         </label>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 no-swipe" data-no-swipe="true">
           {DESTINATARIOS.map((d) => {
             const isSelected = destinatario === d;
             return (
@@ -119,10 +119,10 @@ export const FormAvisoGeral: React.FC = () => {
                 key={d}
                 type="button"
                 onClick={() => setDestinatario(d)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
                   isSelected
-                    ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white font-semibold shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-xs font-bold'
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 hover:border-slate-300'
                 }`}
               >
                 {d}
@@ -134,7 +134,7 @@ export const FormAvisoGeral: React.FC = () => {
 
       {/* 3. Detalhes */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
           Informações Detalhadas:
         </label>
         <textarea
@@ -142,31 +142,31 @@ export const FormAvisoGeral: React.FC = () => {
           value={descricao}
           onChange={(e) => setDescricao(e.target.value)}
           placeholder="Ex: Convidamos todos os irmãos para a cantina após o culto em prol das atividades da mocidade."
-          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white focus:border-slate-900 focus:outline-none"
+          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
         />
       </div>
 
       {/* 4. Data do Evento */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1 flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5 text-slate-500" />
-          <span>Data de Realização / Validade:</span>
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Calendar className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+          <span>Data de Realização / Validade (Opcional):</span>
         </label>
         <input
           type="text"
           value={dataEvento}
           onChange={(e) => setDataEvento(e.target.value)}
           placeholder="Ex: Próximo Domingo pela manhã"
-          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white focus:border-slate-900 focus:outline-none"
+          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500 dark:focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 focus:outline-none transition-all"
         />
       </div>
 
       {/* Botão de Envio */}
       <button
         type="submit"
-        className="w-full py-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white active:scale-[0.99] text-white dark:text-slate-950 font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all touch-target"
+        className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-md shadow-blue-600/20 flex items-center justify-center gap-2 transition-all touch-target"
       >
-        <Send className="w-4 h-4" />
+        <Send className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
         <span>Transmitir Comunicado Geral</span>
       </button>
     </form>

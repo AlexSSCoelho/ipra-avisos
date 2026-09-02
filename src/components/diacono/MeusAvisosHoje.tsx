@@ -34,62 +34,65 @@ export const MeusAvisosHoje: React.FC = () => {
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-3">
       <div className="flex items-center justify-between px-1">
-        <h3 className="text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Registros transmitidos por você ({meusAvisosHoje.length})
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+          <Clock className="w-4 h-4 text-slate-400" />
+          <span>Registros transmitidos por você ({meusAvisosHoje.length})</span>
         </h3>
-        <span className="text-[10px] text-slate-400">
-          Atualização ao vivo
+        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span>Ao vivo</span>
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {meusAvisosHoje.map((aviso) => {
           const isAnunciado = aviso.status === 'anunciado';
 
           return (
             <div
               key={aviso.id}
-              className={`p-3.5 rounded-xl border transition-all ${
+              className={`p-4 rounded-2xl border transition-surface ${
                 isAnunciado
-                  ? 'bg-slate-50 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-75'
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-xs'
+                  ? 'bg-slate-50/80 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800/80 opacity-75'
+                  : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-xs'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-slate-100 dark:bg-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
                     {getItemIcon(aviso.tipo)}
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="text-sm font-bold text-slate-900 dark:text-white">
                       {getTipoAvisoLabel(aviso.tipo)}
                     </span>
-                    <span className="text-[10px] text-slate-400 ml-1.5">
+                    <span className="text-xs font-medium text-slate-400 ml-2">
                       {formatHoraMinutosAtras(aviso.criadoEm)}
                     </span>
                   </div>
                 </div>
 
                 {isAnunciado ? (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800">
-                    <CheckCircle2 className="w-3 h-3" /> Anunciado
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 flex items-center gap-1 border border-emerald-200 dark:border-emerald-800 shadow-xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> Anunciado
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 flex items-center gap-1 border border-amber-200 dark:border-amber-800">
-                    <Clock className="w-3 h-3" /> No Púlpito
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 flex items-center gap-1.5 border border-amber-200 dark:border-amber-800 shadow-xs">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+                    <span>No Púlpito</span>
                   </span>
                 )}
               </div>
 
-              <div className="mt-2 text-xs text-slate-700 dark:text-slate-300 pl-8">
+              <div className="mt-3 text-sm text-slate-700 dark:text-slate-300 pl-11">
                 {aviso.tipo === 'visitante' && aviso.visitante && (
                   <div>
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.visitante.nome}
                     </span>
-                    <div className="text-slate-500 text-[11px] mt-0.5">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
                       {aviso.visitante.cidade} • {aviso.visitante.igreja}
                     </div>
                   </div>
@@ -97,10 +100,10 @@ export const MeusAvisosHoje: React.FC = () => {
 
                 {aviso.tipo === 'oracao' && aviso.oracao && (
                   <div>
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.oracao.nomePessoa}
                     </span>
-                    <p className="text-slate-500 text-[11px] mt-0.5 italic">
+                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 italic bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800 leading-relaxed">
                       "{aviso.oracao.motivo}"
                     </p>
                   </div>
@@ -108,10 +111,10 @@ export const MeusAvisosHoje: React.FC = () => {
 
                 {aviso.tipo === 'reuniao' && aviso.reuniao && (
                   <div>
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.reuniao.dataTexto}
                     </span>
-                    <div className="text-slate-500 text-[11px] mt-0.5">
+                    <div className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5 font-medium">
                       Local: {aviso.reuniao.local}
                     </div>
                   </div>
@@ -119,10 +122,10 @@ export const MeusAvisosHoje: React.FC = () => {
 
                 {aviso.tipo === 'geral' && aviso.geral && (
                   <div>
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="font-bold text-slate-900 dark:text-white text-base">
                       {aviso.geral.titulo}
                     </span>
-                    <p className="text-slate-500 text-[11px] mt-0.5">
+                    <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm mt-1.5 leading-relaxed">
                       {aviso.geral.descricao}
                     </p>
                   </div>
@@ -130,17 +133,18 @@ export const MeusAvisosHoje: React.FC = () => {
               </div>
 
               {!isAnunciado && (
-                <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
+                <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80 flex justify-end">
                   <button
+                    type="button"
                     onClick={() => {
                       if (window.confirm('Deseja cancelar o envio deste aviso?')) {
                         excluirAviso(aviso.id);
                       }
                     }}
-                    className="text-[11px] text-rose-500 hover:text-rose-700 flex items-center gap-1 font-medium"
+                    className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1.5 font-bold px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                   >
-                    <Trash2 className="w-3 h-3" />
-                    <span>Cancelar</span>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Cancelar Envio</span>
                   </button>
                 </div>
               )}

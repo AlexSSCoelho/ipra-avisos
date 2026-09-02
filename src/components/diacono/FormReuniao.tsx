@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Send, CheckCircle2, Calendar, Clock, MapPin } from 'lucide-react';
+import { Send, CheckCircle2, Calendar, Clock, MapPin, Users } from 'lucide-react';
 import { useAvisos } from '../../context/AvisosContext';
 import type { GrupoReuniao } from '../../types';
 
@@ -79,20 +79,20 @@ export const FormReuniao: React.FC = () => {
       
       {/* Banner de Sucesso */}
       {showSuccessToast && (
-        <div className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 px-4 py-2.5 rounded-xl flex items-center gap-2 animate-in fade-in duration-150">
+        <div className="bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-200 px-3.5 py-2.5 rounded-xl flex items-center gap-2 animate-in fade-in zoom-in-95 duration-150 shadow-xs">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-          <span className="text-xs font-semibold">
-            Aviso de reunião transmitido ao Púlpito com sucesso.
+          <span className="text-xs font-bold">
+            Aviso de reunião transmitido ao Púlpito com sucesso!
           </span>
         </div>
       )}
 
       {/* 1. Selecionar o Grupo / Reunião */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5">
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5">
           Grupo ou Reunião:
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 no-swipe" data-no-swipe="true">
           {GRUPOS_REUNIAO.map((item) => {
             const isSelected = grupo === item.id;
             return (
@@ -100,10 +100,10 @@ export const FormReuniao: React.FC = () => {
                 key={item.id}
                 type="button"
                 onClick={() => setGrupo(item.id)}
-                className={`py-2 px-3 rounded-lg border text-left text-xs font-medium transition-all ${
+                className={`py-2.5 px-3.5 rounded-xl border text-left text-xs sm:text-sm font-semibold transition-all ${
                   isSelected
-                    ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white font-semibold shadow-xs'
-                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
+                    ? 'bg-teal-50 dark:bg-teal-950/60 border-teal-400 dark:border-teal-600 text-teal-950 dark:text-teal-200 font-bold shadow-xs ring-1 ring-teal-400/40'
+                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 hover:border-slate-300'
                 }`}
               >
                 {item.label}
@@ -119,18 +119,18 @@ export const FormReuniao: React.FC = () => {
             value={grupoPersonalizado}
             onChange={(e) => setGrupoPersonalizado(e.target.value)}
             placeholder="Nome da assembleia ou encontro"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white mt-1.5 focus:outline-none focus:border-slate-900"
+            className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white mt-2 focus:bg-white dark:focus:bg-slate-950 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all"
           />
         )}
       </div>
 
       {/* 2. Campo de Data Facilitado */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-          <Calendar className="w-3.5 h-3.5 text-slate-500" />
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Calendar className="w-4 h-4 text-teal-500 dark:text-teal-400" />
           <span>Data do Encontro:</span>
         </label>
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-1.5 no-swipe" data-no-swipe="true">
           {DIAS_RAPIDOS.map((d) => {
             const isSelected = dataSelecionada === d;
             return (
@@ -138,9 +138,9 @@ export const FormReuniao: React.FC = () => {
                 key={d}
                 type="button"
                 onClick={() => setDataSelecionada(d)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
                   isSelected
-                    ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white font-semibold shadow-xs'
+                    ? 'bg-teal-600 border-teal-600 text-white shadow-xs font-bold'
                     : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
                 }`}
               >
@@ -157,18 +157,18 @@ export const FormReuniao: React.FC = () => {
             value={dataPersonalizada}
             onChange={(e) => setDataPersonalizada(e.target.value)}
             placeholder="Ex: Sexta-feira, 12 de Setembro"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 mt-1"
+            className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 focus:outline-none mt-2 transition-all"
           />
         )}
       </div>
 
       {/* 3. Horário */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-          <Clock className="w-3.5 h-3.5 text-slate-500" />
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Clock className="w-4 h-4 text-teal-500 dark:text-teal-400" />
           <span>Horário:</span>
         </label>
-        <div className="flex flex-wrap gap-1.5 mb-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-1.5 no-swipe" data-no-swipe="true">
           {HORARIOS_RAPIDOS.map((h) => {
             const isSelected = horarioSelecionado === h;
             return (
@@ -176,9 +176,9 @@ export const FormReuniao: React.FC = () => {
                 key={h}
                 type="button"
                 onClick={() => setHorarioSelecionado(h)}
-                className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                className={`px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold border transition-all ${
                   isSelected
-                    ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 dark:border-slate-700 text-white font-semibold shadow-xs'
+                    ? 'bg-teal-600 border-teal-600 text-white shadow-xs font-bold'
                     : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
                 }`}
               >
@@ -195,25 +195,25 @@ export const FormReuniao: React.FC = () => {
             value={horarioPersonalizado}
             onChange={(e) => setHorarioPersonalizado(e.target.value)}
             placeholder="Ex: 18h45"
-            className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white focus:outline-none focus:border-slate-900 mt-1"
+            className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-950 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 focus:outline-none mt-2 transition-all"
           />
         )}
       </div>
 
       {/* 4. Local da Reunião */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1.5 flex items-center gap-1">
-          <MapPin className="w-3.5 h-3.5 text-slate-500" />
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <MapPin className="w-4 h-4 text-teal-500 dark:text-teal-400" />
           <span>Local ou Endereço: <span className="text-rose-500">*</span></span>
         </label>
-        <div className="flex gap-1.5 mb-1.5">
+        <div className="flex gap-2 mb-2 no-swipe" data-no-swipe="true">
           <button
             type="button"
             onClick={() => setLocal('No Templo da IPRA')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
               local === 'No Templo da IPRA'
-                ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 text-white font-semibold'
-                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                ? 'bg-teal-600 border-teal-600 text-white shadow-xs font-bold'
+                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
             }`}
           >
             No Templo
@@ -221,10 +221,10 @@ export const FormReuniao: React.FC = () => {
           <button
             type="button"
             onClick={() => setLocal('')}
-            className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold border transition-all ${
               local !== 'No Templo da IPRA'
-                ? 'bg-slate-900 dark:bg-slate-800 border-slate-900 text-white font-semibold'
-                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300'
+                ? 'bg-teal-600 border-teal-600 text-white shadow-xs font-bold'
+                : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100'
             }`}
           >
             Nos Lares / Outro Local
@@ -236,30 +236,31 @@ export const FormReuniao: React.FC = () => {
           value={local}
           onChange={(e) => setLocal(e.target.value)}
           placeholder="Ex: Residência do Irmão José Bento - Rua Bahia, 450"
-          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white focus:border-slate-900 focus:outline-none"
+          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all"
         />
       </div>
 
-      {/* 5. Responsável */}
+      {/* 5. Responsável / Liderança */}
       <div>
-        <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-1">
-          Dirigente ou Responsável (Opcional):
+        <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+          <Users className="w-4 h-4 text-teal-500 dark:text-teal-400" />
+          <span>Responsável / Liderança (Opcional):</span>
         </label>
         <input
           type="text"
           value={responsavel}
           onChange={(e) => setResponsavel(e.target.value)}
-          placeholder="Ex: Pb. Marcos e Irmã Nilza"
-          className="w-full px-3.5 py-2 text-xs sm:text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white focus:bg-white focus:border-slate-900 focus:outline-none"
+          placeholder="Ex: Pb. Carlos e Irmã Marta / Líder de Jovens"
+          className="w-full px-3.5 py-3 text-sm sm:text-base rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-950 focus:border-teal-500 dark:focus:border-teal-400 focus:ring-2 focus:ring-teal-500/20 focus:outline-none transition-all"
         />
       </div>
 
-      {/* Botão de Envio */}
+      {/* Botão de Enviar */}
       <button
         type="submit"
-        className="w-full py-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-slate-800 dark:hover:bg-white active:scale-[0.99] text-white dark:text-slate-950 font-bold text-sm shadow-sm flex items-center justify-center gap-2 transition-all touch-target"
+        className="w-full py-4 rounded-xl bg-gradient-to-r from-teal-700 to-teal-600 hover:from-teal-600 hover:to-teal-500 active:scale-[0.99] text-white font-black text-sm sm:text-base shadow-md shadow-teal-600/20 flex items-center justify-center gap-2 transition-all touch-target"
       >
-        <Send className="w-4 h-4" />
+        <Send className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
         <span>Transmitir Aviso de Reunião</span>
       </button>
     </form>

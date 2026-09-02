@@ -7,6 +7,7 @@ import {
   doc, 
   setDoc, 
   updateDoc, 
+  deleteDoc,
   onSnapshot, 
   enableIndexedDbPersistence,
   query,
@@ -14,7 +15,7 @@ import {
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 
-const STORAGE_KEYS = {
+export const STORAGE_KEYS = {
   OBREIROS: 'ipra_obreiros_v1',
   CULTO_ATIVO: 'ipra_culto_ativo_v1',
   AVISOS: 'ipra_avisos_v1',
@@ -407,9 +408,50 @@ class StorageService {
     const avisos = this.getAvisos();
     const updated = avisos.filter((item) => item.id !== id);
     this.saveAvisos(updated);
+
+    if (this.firestore) {
+      try {
+        const avisoDoc = doc(this.firestore, 'avisos', id);
+        deleteDoc(avisoDoc);
+      } catch (err) {
+        console.warn('Erro ao deletar aviso no Firestore:', err);
+      }
+    }
   }
 
   // --- Subscrições em Tempo Real (Offline / Cross-Tab / Firestore) ---
+  public subscribeToObreiros(callback: (obreiros: Obreiro[]) => void): () => void {
+    this.obreiroListeners.add(callback);
+
+    const handleBroadcast = (event: MessageEvent) => {
+      if (event.data?.type === 'OBREIROS_UPDATED') {
+        callback(event.data.payload);
+      }
+    };
+
+    if (this.channel) {
+      this.channel.addEventListener('message', handleBroadcast);
+    }
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEYS.OBREIROS && event.newValue) {
+        try {
+          const parsed = JSON.parse(event.newValue);
+          callback(parsed);
+        } catch {
+          // Ignore
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      this.obreiroListeners.delete(callback);
+      if (this.channel) this.channel.removeEventListener('message', handleBroadcast);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }
+
   public subscribeToAvisos(callback: (avisos: AvisoItem[]) => void): () => void {
     this.avisoListeners.add(callback);
 
@@ -422,10 +464,8 @@ class StorageService {
           snapshot.forEach((d) => {
             items.push(d.data() as AvisoItem);
           });
-          if (items.length > 0) {
-            localStorage.setItem(STORAGE_KEYS.AVISOS, JSON.stringify(items));
-            this.avisoListeners.forEach((cb) => cb(items));
-          }
+          localStorage.setItem(STORAGE_KEYS.AVISOS, JSON.stringify(items));
+          this.avisoListeners.forEach((cb) => cb(items));
         });
       } catch (e) {
         console.warn('Falha na subscrição do Firestore, usando fallback local:', e);

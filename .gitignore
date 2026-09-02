@@ -44,3 +44,12 @@ Thumbs.db
 # Cloudflare & Temp files
 .temp/
 .cache/
+
+# Android build & caches
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/*.iml
+android/app/*.iml

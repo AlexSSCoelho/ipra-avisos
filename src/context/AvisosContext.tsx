@@ -44,7 +44,9 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   useEffect(() => {
     const unsubscribe = storageService.subscribeToAvisos((updatedAvisos) => {
       if (updatedAvisos.length > prevAvisosLengthRef.current) {
-        if (isDirigente && soundEnabled) {
+        const newest = updatedAvisos[0];
+        // Toca notificação do púlpito apenas se for enviado por outro obreiro para o culto ativo
+        if (isDirigente && soundEnabled && newest && newest.autorId !== currentUser?.id) {
           audioFeedback.playPulpitNotificationSound();
         }
       }
@@ -53,17 +55,17 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     });
 
     return () => unsubscribe();
-  }, [isDirigente, soundEnabled]);
+  }, [isDirigente, soundEnabled, currentUser?.id]);
 
   const currentCultoId = cultoAtivo?.id || 'culto_demo_hoje';
   
-  // Todos os avisos da sessão ativa
-  const avisosCultoAtual = avisos;
-  const avisosPendentes = avisos.filter((a) => a.status === 'pendente');
-  const avisosAnunciados = avisos.filter((a) => a.status === 'anunciado');
+  // Avisos da sessão ativa do culto em andamento
+  const avisosCultoAtual = avisos.filter((a) => a.cultoId === currentCultoId);
+  const avisosPendentes = avisosCultoAtual.filter((a) => a.status === 'pendente');
+  const avisosAnunciados = avisosCultoAtual.filter((a) => a.status === 'anunciado');
 
   const meusAvisosHoje = currentUser
-    ? avisos.filter((a) => a.autorId === currentUser.id)
+    ? avisosCultoAtual.filter((a) => a.autorId === currentUser.id)
     : [];
 
   const adicionarAviso = (params: AddAvisoParams) => {
@@ -123,10 +125,10 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const totalPendentes = avisosPendentes.length;
   const totalAnunciados = avisosAnunciados.length;
-  const totalVisitantes = avisos.filter((a) => a.tipo === 'visitante').length;
-  const totalOracoes = avisos.filter((a) => a.tipo === 'oracao').length;
-  const totalReunioes = avisos.filter((a) => a.tipo === 'reuniao').length;
-  const totalGerais = avisos.filter((a) => a.tipo === 'geral').length;
+  const totalVisitantes = avisosCultoAtual.filter((a) => a.tipo === 'visitante').length;
+  const totalOracoes = avisosCultoAtual.filter((a) => a.tipo === 'oracao').length;
+  const totalReunioes = avisosCultoAtual.filter((a) => a.tipo === 'reuniao').length;
+  const totalGerais = avisosCultoAtual.filter((a) => a.tipo === 'geral').length;
 
   return (
     <AvisosContext.Provider

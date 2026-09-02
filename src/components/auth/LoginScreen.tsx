@@ -120,12 +120,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
             
             {/* Lista de Obreiros */}
             <div>
-              <div className="flex items-center justify-between text-xs font-semibold text-slate-400 mb-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400 mb-2">
                 <span className="uppercase tracking-wider text-[10px]">Identificação do Obreiro:</span>
-                <span className="text-slate-500">{obreiros.length} cadastrados</span>
+                <span className="text-slate-500 font-medium">{obreiros.length} cadastrados</span>
               </div>
               
-              <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 border border-slate-800 rounded-xl p-1.5 bg-slate-950/60">
+              <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1 border border-slate-800 rounded-2xl p-1.5 bg-slate-950/60 no-swipe shadow-inner" data-no-swipe="true">
                 {obreiros.map((ob) => {
                   const isSelected = selectedObreiro?.id === ob.id;
                   const isDirigenteDoCulto = cultoAtivo?.dirigenteId === ob.id;
@@ -138,25 +138,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                         setSelectedObreiro(ob);
                         setErrorMsg('');
                       }}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg border flex items-center justify-between transition-all ${
+                      className={`w-full text-left px-3 py-2.5 rounded-xl border flex items-center justify-between transition-all ${
                         isSelected
-                          ? 'bg-slate-800 border-amber-500/60 text-white font-medium shadow-sm'
-                          : 'bg-transparent border-transparent hover:bg-slate-850 text-slate-300 hover:border-slate-800'
+                          ? 'bg-slate-800/90 border-amber-500/70 text-white font-semibold shadow-sm ring-1 ring-amber-500/30'
+                          : 'bg-transparent border-transparent hover:bg-slate-850/60 text-slate-300 hover:border-slate-800'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
                         <div
-                          className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold ${
-                            isSelected ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300'
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold transition-colors ${
+                            isSelected ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-800 text-slate-300'
                           }`}
                         >
                           {ob.nome.charAt(0)}
                         </div>
                         <div>
-                          <div className="text-xs sm:text-sm font-semibold text-white leading-tight">
+                          <div className="text-xs sm:text-sm font-bold text-white leading-tight">
                             {ob.nome}
                           </div>
-                          <div className="text-[11px] text-slate-400">
+                          <div className="text-[10px] text-slate-400 font-medium">
                             {getCargoLabel(ob.cargo)}
                           </div>
                         </div>
@@ -164,8 +164,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
                       <div className="flex items-center gap-1.5">
                         {isDirigenteDoCulto && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                            <Crown className="w-2.5 h-2.5" /> Dirigente
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 uppercase tracking-wide">
+                            <Crown className="w-2.5 h-2.5 text-amber-400" /> Dirigente
                           </span>
                         )}
                         {isSelected && <Check className="w-4 h-4 text-amber-400" />}
@@ -177,29 +177,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
             </div>
 
             {/* Checkbox: Dirigente do Culto */}
-            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
+            <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 space-y-2">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isDirigindoCulto}
                   onChange={(e) => setIsDirigindoCulto(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500"
+                  className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-900 text-amber-500 focus:ring-amber-500 shrink-0"
                 />
                 <div>
-                  <div className="text-xs font-semibold text-slate-200 flex items-center gap-1">
+                  <div className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
                     <Crown className="w-3.5 h-3.5 text-amber-400" />
                     <span>Estou dirigindo o culto de hoje</span>
                   </div>
-                  <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                  <p className="text-[11px] text-slate-400 leading-tight mt-0.5 font-normal">
                     Habilita o recebimento exclusivo dos avisos no Púlpito.
                   </p>
                 </div>
               </label>
 
               {isDirigindoCulto && (
-                <div className="mt-3 pt-3 border-t border-slate-800 animate-in fade-in duration-150">
+                <div className="pt-2.5 border-t border-slate-800 animate-in fade-in zoom-in-95 duration-150">
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    Senha de Liberação (Padrão: 1234):
+                    Senha de Liberação:
                   </label>
                   <div className="relative">
                     <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -208,8 +208,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                       inputMode="numeric"
                       value={pin}
                       onChange={(e) => setPin(e.target.value)}
-                      placeholder="Senha do dirigente"
-                      className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-900 text-white focus:border-amber-500 focus:outline-none"
+                      placeholder="Senha do dirigente (padrão: 1234)"
+                      className="w-full pl-8.5 pr-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
                     />
                   </div>
                 </div>
@@ -218,7 +218,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
             {/* Erro */}
             {errorMsg && (
-              <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800 text-rose-300 text-xs font-medium">
+              <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-xs font-medium animate-in fade-in duration-100">
                 {errorMsg}
               </div>
             )}
@@ -226,10 +226,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
             {/* Botão Entrar */}
             <button
               type="submit"
-              className="w-full py-3 px-4 rounded-xl bg-slate-100 hover:bg-white active:scale-[0.99] text-slate-950 font-bold text-sm shadow-md flex items-center justify-center gap-2 transition-all touch-target"
+              className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 active:scale-[0.99] text-slate-950 font-black text-xs sm:text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 transition-all touch-target"
             >
-              <span>Acessar Sistema</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Acessar Painel</span>
+              <ArrowRight className="w-4 h-4 font-bold" />
             </button>
 
             {/* Botão Novo Obreiro */}
@@ -237,7 +237,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               <button
                 type="button"
                 onClick={() => setShowNewUserForm(true)}
-                className="text-xs text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto"
+                className="text-xs text-slate-400 hover:text-white flex items-center justify-center gap-1.5 mx-auto font-medium transition-colors"
               >
                 <UserPlus className="w-3.5 h-3.5" />
                 <span>Cadastrar novo obreiro</span>

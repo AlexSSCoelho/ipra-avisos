@@ -30,14 +30,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   useEffect(() => {
-    const currentList = storageService.getObreiros();
-    setObreiros(currentList);
+    const unsubscribe = storageService.subscribeToObreiros((updatedList) => {
+      setObreiros(updatedList);
+    });
+    return () => unsubscribe();
   }, []);
 
   const login = (obreiro: Obreiro, pin?: string): boolean => {
     if (pin !== undefined) {
       const correctPin = storageService.getAdminPin();
-      if (pin !== correctPin && pin !== '1234') {
+      if (pin !== correctPin) {
         return false;
       }
     }
@@ -53,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const verifyAdminPin = (pin: string): boolean => {
     const correctPin = storageService.getAdminPin();
-    return pin === correctPin || pin === '1234';
+    return pin === correctPin;
   };
 
   const updateAdminPin = (oldPin: string, newPin: string): boolean => {
@@ -67,10 +69,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addObreiro = (obreiroData: Omit<Obreiro, 'id'>) => {
     const newObreiro: Obreiro = {
       ...obreiroData,
-      id: `obreiro_${Date.now()}`,
+      id: `obreiro_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     };
     storageService.addObreiro(newObreiro);
-    setObreiros(storageService.getObreiros());
   };
 
   const isAdmin = currentUser?.isAdmin || currentUser?.cargo === 'pastor' || currentUser?.cargo === 'admin';

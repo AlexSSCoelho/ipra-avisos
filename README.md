@@ -7,6 +7,7 @@
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)
 ![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Capacitor](https://img.shields.io/badge/Capacitor_7-Android_APK-119EFF?style=for-the-badge&logo=capacitor&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-Ready-success?style=for-the-badge)
 
 <p align="center">
@@ -20,52 +21,58 @@
 
 ## 📖 Visão Geral
 
-O **IPRA Avisos** foi projetado para substituir anotações em papéis e mensagens dispersas durante os cultos públicos. O aplicativo conecta os **diáconos** (que recepcionam visitantes e anotam intercessões) ao **pastor / dirigente** que conduz a reunião no altar, oferecendo uma leitura clara, sóbria, em modo teleprompter e de alto contraste.
+O **IPRA Avisos** foi projetado para substituir anotações em papéis e mensagens dispersas durante os cultos públicos. O aplicativo conecta a equipe de recepção e os **diáconos** ao **pastor / dirigente** que conduz a reunião no altar, oferecendo uma leitura clara, sóbria, em modo teleprompter e de alto contraste.
 
 ---
 
-## 👥 Perfis de Acesso & Funcionalidades
+## 🌟 Estrutura Operacional do App
 
-O sistema conta com **3 níveis de acesso estritos**, adaptando a interface conforme o perfil do obreiro:
+### 1. 🏠 Início (Hub de Culto ao Vivo)
+- **Status da Reunião**:
+  - Exibe status do culto em tempo real com indicador pulsante `🔴 Culto em Andamento`.
+  - Horário de início, nome do Dirigente do Altar e botão de encerramento seguro.
+- **4 Métricas Instantâneas**:
+  - Contagem ao vivo de **Visitantes**, **Pedidos de Oração**, **Reuniões nos Lares** e **Comunicados Gerais**.
+- **Acesso Operacional Rápido**:
+  - Botões dedicados para `Anotar Novo Aviso`, `Abrir Púlpito do Altar`, `Ver Histórico` e `Baixar APK Nativo`.
+- **Modo Sem Culto Ativo**:
+  - Botão de destaque `[ ＋ Iniciar Novo Culto Agora ]` para configuração rápida de tema e dirigente.
 
-### 1. ✍️ Usuário Comum (Diácono / Diaconisa / Obreiro Anotador)
-- **Anotação de Avisos**: Cadastro rápido com interface humanizada:
-  - **Visitantes**: Nome livre, composição (*Homem, Mulher, Casal, Família, Jovem*), cidade livre, igreja de origem livre e observações.
+### 2. ✍️ Anotação de Avisos (Diaconia & Recepção)
+- Cadastro humanizado e veloz:
+  - **Visitantes**: Nome, composição (*Homem, Mulher, Casal, Família, Jovem*), cidade e igreja de origem.
   - **Pedidos de Oração**: Nome da pessoa, 7 categorias temáticas e opção de *⚡ Prioridade no Púlpito*.
-  - **Reuniões & Grupos**: Oração nos lares, grupos de mocidade, varões, irmãs, datas e horários rápidos.
+  - **Reuniões & Grupos**: Oração nos lares, mocidade, varões, irmãs, datas e horários rápidos.
   - **Comunicados Gerais**: Assuntos oficiais da secretaria e liderança.
-- **Registros do Culto**: Timeline para acompanhar em tempo real se o aviso já foi lido pelo pastor (`⏳ No Púlpito` vs `✓ Anunciado`).
-- **Interface Limpa**: O diácono **não visualiza** menus técnicos nem telas de púlpito.
 
-### 2. 👑 Dirigente do Culto (Pastor / Obreiro no Altar)
-- **Púlpito (Teleprompter OLED)**:
-  - Fundo preto puro (`#000000`) de alto contraste, sem reflexos de iluminação.
-  - Tipografia de alta legibilidade com **zoom de acessibilidade** (`[ A- ]` `100% a 180%` `[ A+ ]`).
-  - Faixas e badges coloridos por categoria.
-  - **Confirmação com 1 Toque**: Ao marcar como anunciado, o cartão emite feedback verde esmeralda com pulso luminoso, sino sonoro via Web Audio API e vibração tátil no aparelho celular.
-  - Opção de restauração de avisos lidos.
-- **Passar Direção do Culto**: Pode transferir a condução do púlpito para outro obreiro a qualquer momento.
-- **Concluir Culto de Hoje**: Encerramento seguro da sessão.
+### 3. 📖 Púlpito do Altar (Teleprompter OLED)
+- **Design Sóbrio de Alto Contraste**: Fundo preto puro (`#000000`), sem reflexos de iluminação do palco.
+- **Tipografia Escalonável**: Controle de zoom rápido (`A-` e `A+` de 100% a 180%).
+- **Confirmação com 1 Toque**: Marcação com pulso esmeralda, sinal sonoro e feedback tátil por vibração.
+- **Filtros Rápidos**: Visualização de todos ou separação por categoria (Visitantes, Orações, etc.).
 
-### 3. 🛡️ Administrador Master (Pastor Presidente / Secretaria)
-- Acesso irrestrito a todas as áreas (**Anotação**, **Púlpito**, **Histórico** e **Ajustes Master ⚙️**).
-- **Área Exclusiva Master**:
-  - **Definir Dirigente do Culto**: Selecionar diretamente quem está dirigindo sem necessidade de senha.
-  - **Quadro de Obreiros**: Cadastrar e gerenciar membros do corpo ministerial.
-  - **Senha do Sistema**: Alterar a senha mestra/PIN de liberação.
-  - **Nuvem & Credenciais Firestore**: Acesso exclusivo à configuração das chaves de banco de dados na nuvem.
+### 4. 📜 Histórico & Exportação WhatsApp
+- Registro de todos os comunicados e visitantes da sessão.
+- Botão de **Copiar Relatório Completo formatado para WhatsApp** para envio direto à secretaria ou grupo de liderança.
+
+### 5. ⚙️ Painel Clean de Ajustes & Perfil (`SettingsModal`)
+- Acesso instantâneo pelo ícone `⚙️` no cabeçalho ou menu de perfil.
+- **Geral & Perfil**: Dados do obreiro conectado, logout/troca de usuário, sons, tema escuro e zoom.
+- **Dirigente**: Passagem rápida da condução do culto para outro pastor/obreiro.
+- **Obreiros**: Cadastro e gerenciamento do corpo ministerial.
+- **Segurança**: Alteração de Senha Master de 4 dígitos.
+- **Nuvem**: Integração direta com credenciais JSON do Firebase Firestore.
+- **Download do APK**: Baixe o instalador oficial `.apk` diretamente para Android.
 
 ---
 
-## 📱 Recursos de Experiência & Usabilidade (UX)
+## 📱 Experiência de Uso (UX & Mobile)
 
-- **👆 Navegação por Gestos (Swipe)**: Deslize o dedo para a esquerda ou direita na tela para alternar entre as abas, com feedback háptico (vibração nativa).
-- **📲 PWA / WebAPK Nativo**: Botão de instalação com 1 toque direto no Android, funcionando em tela cheia com ícone próprio e suporte offline.
-- **⚡ Sincronização Híbrida em 0ms**:
-  - Barramento local síncrono para atualizações em tempo real instantâneas.
-  - `BroadcastChannel` para sincronização entre múltiplas abas abertas.
-  - Conector nativo com **Firebase Firestore** para sincronização entre múltiplos celulares pela internet.
-- **🔊 Web Audio Feedback**: Efeitos sonoros gerados por síntese de áudio nativa via código (sem dependência de arquivos externos de áudio).
+- **👆 Transição Deslizante 60 FPS (Transactional Slide)**: Troca física suave entre abas com aceleração por hardware.
+- **🖐️ Gesto de Deslizar o Dedo (Universal Swipe)**: Deslize para a esquerda ou direita a partir de qualquer ponto da tela para navegar entre as abas.
+- **🛑 Contenção Perfeita de Viewport**: Eliminação completa de rolagem infinita ou espaços em branco vazios no mobile. Cada aba possui rolagem interna isolada.
+- **📦 APK Nativo Android Oficial**: Pacote compilado (`ipra-avisos.apk`) de 4.5 MB pronto para instalação direta sem barras de navegador.
+- **⚡ Sincronização em 0ms**: Suporte síncrono local + `BroadcastChannel` + `Firebase Firestore SDK`.
 
 ---
 
@@ -73,6 +80,7 @@ O sistema conta com **3 níveis de acesso estritos**, adaptando a interface conf
 
 - **Frontend**: [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
 - **Build Tool**: [Vite](https://vite.dev/)
+- **Mobile Nativo**: [Capacitor 7](https://capacitorjs.com/) + Android SDK 34/36
 - **Estilização**: [Tailwind CSS](https://tailwindcss.com/)
 - **Ícones**: [Lucide React](https://lucide.dev/)
 - **Persistência**: `localStorage` + `BroadcastChannel` + `Firebase Firestore SDK`
@@ -85,31 +93,33 @@ O sistema conta com **3 níveis de acesso estritos**, adaptando a interface conf
 
 ### Pré-requisitos
 - [Node.js](https://nodejs.org/) (versão 18 ou superior)
-- `npm` ou `yarn` ou `pnpm`
+- `npm`
 
-### Instalação
-
-1. Clone o repositório:
+### 1. Clonar e Instalar Dependências
 ```bash
 git clone https://github.com/AlexSSCoelho/ipra-avisos.git
 cd ipra-avisos
-```
-
-2. Instale as dependências:
-```bash
 npm install
 ```
 
-3. Inicie o servidor de desenvolvimento:
+### 2. Iniciar Ambiente de Desenvolvimento
 ```bash
 npm run dev
 ```
 
-4. Para gerar a build de produção:
+### 3. Gerar Build de Produção
 ```bash
 npm run build
-npm run preview
+npm run preview -- --host --port 5173
 ```
+
+### 4. Compilar o APK Android Nativo
+```bash
+npx cap copy android
+cd android
+./gradlew assembleDebug
+```
+O APK compilado é gerado em `android/app/build/outputs/apk/debug/app-debug.apk`.
 
 ---
 
@@ -131,26 +141,6 @@ O aplicativo funciona **100% offline e localmente por padrão**. Caso queira sin
      VITE_FIREBASE_MESSAGING_SENDER_ID=seu_sender_id
      VITE_FIREBASE_APP_ID=seu_app_id
      ```
-
----
-
-## 📋 Regras de Segurança do Firestore (Recomendado)
-
-No Firebase Console, configure as regras de segurança do Firestore:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /avisos/{avisoId} {
-      allow read, write: if true;
-    }
-    match /cultos/{cultoId} {
-      allow read, write: if true;
-    }
-  }
-}
-```
 
 ---
 
