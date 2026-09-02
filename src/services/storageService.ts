@@ -17,14 +17,14 @@ import {
 import type { Firestore } from 'firebase/firestore';
 
 export const STORAGE_KEYS = {
-  OBREIROS: 'ipra_obreiros_v1',
-  CULTO_ATIVO: 'ipra_culto_ativo_v1',
-  HISTORICO_CULTOS: 'ipra_historico_cultos_v1',
-  AVISOS: 'ipra_avisos_v1',
-  FIREBASE_CONFIG: 'ipra_firebase_config_v1',
-  ADMIN_PIN: 'ipra_admin_pin_v1',
-  FONT_SCALE: 'ipra_font_scale_v1',
-  CURRENT_USER: 'ipra_current_user_v1',
+  OBREIROS: 'ipra_obreiros_v2',
+  CULTO_ATIVO: 'ipra_culto_ativo_v2',
+  HISTORICO_CULTOS: 'ipra_historico_cultos_v2',
+  AVISOS: 'ipra_avisos_v2',
+  FIREBASE_CONFIG: 'ipra_firebase_config_v2',
+  ADMIN_PIN: 'ipra_admin_pin_v2',
+  FONT_SCALE: 'ipra_font_scale_v2',
+  CURRENT_USER: 'ipra_current_user_v2',
 };
 
 class StorageService {
@@ -45,8 +45,45 @@ class StorageService {
   }
 
   private initLocalData() {
-    // Instalação limpa deve iniciar com zero obreiros, exigindo bootstrap com PIN.
-    // A relação oficial de obreiros é importada exclusivamente via ação administrativa autorizada.
+    if (typeof window === 'undefined') return;
+
+    // Purga proativa de chaves legadas v1 que continham dados mock/fictícios
+    try {
+      const legacyKeys = [
+        'ipra_obreiros_v1',
+        'ipra_culto_ativo_v1',
+        'ipra_historico_cultos_v1',
+        'ipra_avisos_v1',
+        'ipra_admin_pin_v1',
+        'ipra_current_user_v1',
+        'ipra_font_scale_v1',
+        'ipra_firebase_config_v1',
+        'obreiros',
+        'culto_ativo',
+        'avisos',
+        'admin_pin',
+      ];
+      legacyKeys.forEach((key) => localStorage.removeItem(key));
+
+      // Limpeza de segurança caso dados mock tenham sido injetados em chaves correntes
+      const rawObreiros = localStorage.getItem(STORAGE_KEYS.OBREIROS);
+      if (rawObreiros && (rawObreiros.includes('Carlos Eduardo') || rawObreiros.includes('pastor_titular') || rawObreiros.includes('diacono_andre'))) {
+        localStorage.removeItem(STORAGE_KEYS.OBREIROS);
+        localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      }
+
+      const rawCulto = localStorage.getItem(STORAGE_KEYS.CULTO_ATIVO);
+      if (rawCulto && (rawCulto.includes('culto_demo_hoje') || rawCulto.includes('Carlos Eduardo'))) {
+        localStorage.removeItem(STORAGE_KEYS.CULTO_ATIVO);
+      }
+
+      const rawAvisos = localStorage.getItem(STORAGE_KEYS.AVISOS);
+      if (rawAvisos && (rawAvisos.includes('aviso_demo_') || rawAvisos.includes('Roberto e Família') || rawAvisos.includes('Cantina da Mocidade'))) {
+        localStorage.removeItem(STORAGE_KEYS.AVISOS);
+      }
+    } catch {
+      // Ignora erro de acesso ao localStorage
+    }
   }
 
 

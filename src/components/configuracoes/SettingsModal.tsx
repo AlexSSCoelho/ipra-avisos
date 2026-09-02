@@ -414,8 +414,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                   <a
-                    href="/ipra-avisos.apk"
-                    download="ipra-avisos.apk"
+                    href="https://github.com/AlexSSCoelho/ipra-avisos/releases/latest"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all text-center"
                   >
                     <Download className="w-4 h-4" />
