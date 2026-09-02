@@ -14,7 +14,7 @@ import type { Obreiro, CargoObreiro } from '../../types';
 import { getCargoLabel } from '../../utils/formatters';
 
 interface LoginScreenProps {
-  onSuccess: (isDirigente?: boolean) => void;
+  onSuccess: (isDirigente?: boolean, obreiro?: Obreiro) => void;
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
@@ -119,7 +119,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     }
 
     login(selectedObreiro);
-    onSuccess(isDirigindoCulto || isAlreadyDirigente);
+    onSuccess(isDirigindoCulto || isAlreadyDirigente, selectedObreiro);
   };
 
   return (

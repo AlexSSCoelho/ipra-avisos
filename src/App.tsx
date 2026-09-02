@@ -2,8 +2,9 @@ import React, { useState, useRef } from 'react';
 import { AccessibilityProvider, useAccessibility } from './context/AccessibilityContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CultoProvider } from './context/CultoContext';
-import { AvisosProvider } from './context/AvisosContext';
+import { AvisosProvider, useAvisos } from './context/AvisosContext';
 import { Header } from './components/common/Header';
+import { BottomNav, type AppTabType } from './components/common/BottomNav';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { IniciarCultoModal } from './components/culto/IniciarCultoModal';
 import { DiaconoDashboard } from './components/diacono/DiaconoDashboard';
@@ -12,17 +13,16 @@ import { HistoricoScreen } from './components/historico/HistoricoScreen';
 import { HomeScreen } from './components/home/HomeScreen';
 import { SettingsModal } from './components/configuracoes/SettingsModal';
 
-type TabType = 'home' | 'diacono' | 'pulpito' | 'historico';
-
 const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
   const { isPulpitMode } = useAccessibility();
-  const [currentTab, setCurrentTab] = useState<TabType>('home');
+  const { totalPendentes } = useAvisos();
+  const [currentTab, setCurrentTab] = useState<AppTabType>('home');
   const [isIniciarCultoModalOpen, setIsIniciarCultoModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // 4 Abas fixas, previsíveis e universais
-  const activeTabs: TabType[] = ['home', 'diacono', 'pulpito', 'historico'];
+  const activeTabs: AppTabType[] = ['home', 'diacono', 'pulpito', 'historico'];
 
   // --- CONTROLE DE GESTOS TOUCH (DESLIZAR O DEDO EM QUALQUER LUGAR DA TELA) ---
   const touchStartX = useRef<number>(0);
@@ -84,14 +84,21 @@ const AppContent: React.FC = () => {
     }
   };
 
-
   const activeTabIndex = Math.max(0, activeTabs.indexOf(currentTab));
 
   // Se o usuário não estiver logado, exibe tela de seleção de obreiro / login
   if (!currentUser) {
     return (
       <LoginScreen
-        onSuccess={(isDirig) => setCurrentTab(isDirig ? 'pulpito' : 'home')}
+        onSuccess={(isDirig, obreiro) => {
+          if (isDirig) {
+            setCurrentTab('pulpito');
+          } else if (obreiro?.cargo === 'diacono' || obreiro?.cargo === 'diaconisa') {
+            setCurrentTab('diacono');
+          } else {
+            setCurrentTab('home');
+          }
+        }}
       />
     );
   }
@@ -104,16 +111,15 @@ const AppContent: React.FC = () => {
         isPulpitMode ? 'bg-black text-white' : 'bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white'
       }`}
     >
-      {/* Header com Status, Navegação e Acessibilidade */}
+      {/* Header Compacto com Status, Identidade e Acessibilidade */}
       <Header
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
+        onNavigateHome={() => setCurrentTab('home')}
         onOpenIniciarCultoModal={() => setIsIniciarCultoModalOpen(true)}
         onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
       />
 
       {/* Conteúdo Principal em Carrossel Deslizante Fluido e Isolado */}
-      <main className="flex-1 w-full overflow-hidden flex flex-col">
+      <main className="flex-1 w-full overflow-hidden flex flex-col relative">
         <div 
           className="flex h-full w-full transition-transform duration-300 ease-out will-change-transform"
           style={{
@@ -121,7 +127,7 @@ const AppContent: React.FC = () => {
           }}
         >
           {/* Aba 0: Início / Hub do Culto */}
-          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-16">
+          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-20">
             <HomeScreen
               onNavigate={(t) => setCurrentTab(t)}
               onOpenIniciarCulto={() => setIsIniciarCultoModalOpen(true)}
@@ -130,21 +136,29 @@ const AppContent: React.FC = () => {
           </div>
 
           {/* Aba 1: Anotação de Diácono */}
-          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-16">
+          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-20">
             <DiaconoDashboard />
           </div>
 
           {/* Aba 2: Púlpito */}
-          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-16">
+          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-20">
             <PulpitoScreen />
           </div>
 
           {/* Aba 3: Histórico */}
-          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-16">
+          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-20">
             <HistoricoScreen />
           </div>
         </div>
       </main>
+
+      {/* Navegação Inferior Mobile-First */}
+      <BottomNav
+        currentTab={currentTab}
+        setCurrentTab={setCurrentTab}
+        totalPendentes={totalPendentes}
+        isPulpitMode={isPulpitMode}
+      />
 
       {/* Modal de Configurações e Perfil do Usuário */}
       <SettingsModal

@@ -3,12 +3,10 @@ import {
   Radio, 
   PenSquare, 
   Tv, 
-  Archive, 
   Crown, 
   Clock, 
   Play, 
   Flag, 
-  Download,
   SlidersHorizontal
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -198,125 +196,29 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               Nenhum Culto Ativo
             </h1>
             <p className="text-xs sm:text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-              Inicie um novo culto para que os diáconos possam transmitir visitantes e pedidos de oração em tempo real para o púlpito.
+              {isAdmin 
+                ? 'Inicie um novo culto para que os diáconos possam transmitir visitantes e pedidos de oração em tempo real para o púlpito.'
+                : 'Aguarde o pastor ou dirigente iniciar o culto para começar a anotação de avisos.'}
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={onOpenIniciarCulto}
-            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] text-slate-950 font-black text-base flex items-center justify-center gap-2.5 shadow-lg shadow-amber-500/20 transition-all touch-target"
-          >
-            <Play className="w-5 h-5 fill-slate-950" />
-            <span>Iniciar Novo Culto Agora</span>
-          </button>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={onOpenIniciarCulto}
+              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 active:scale-[0.98] text-slate-950 font-black text-base flex items-center justify-center gap-2.5 shadow-lg shadow-amber-500/20 transition-all touch-target"
+            >
+              <Play className="w-5 h-5 fill-slate-950" />
+              <span>Iniciar Novo Culto Agora</span>
+            </button>
+          ) : (
+            <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl text-xs text-slate-400">
+              Apenas administradores podem iniciar uma nova sessão de culto.
+            </div>
+          )}
         </div>
       )}
 
-      {/* Grid de Atalhos Operacionais */}
-      <div className="grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => onNavigate('diacono')}
-          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 text-left shadow-xs hover:border-amber-400/60 active:scale-[0.98] transition-all space-y-2 touch-target"
-        >
-          <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-300 flex items-center justify-center shadow-xs">
-            <PenSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-              Anotação de Avisos
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Visitantes, orações e comunicados
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigate('pulpito')}
-          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 text-left shadow-xs hover:border-amber-400/60 active:scale-[0.98] transition-all space-y-2 touch-target relative"
-        >
-          <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800 text-amber-600 dark:text-amber-300 flex items-center justify-center shadow-xs">
-            <Tv className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-              Púlpito do Altar
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              {totalPendentes > 0 ? `${totalPendentes} para ler agora` : 'Teleprompter limpo'}
-            </div>
-          </div>
-          {totalPendentes > 0 && (
-            <span className="absolute top-3 right-3 px-2 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950 shadow-xs">
-              {totalPendentes}
-            </span>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onNavigate('historico')}
-          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 text-left shadow-xs hover:border-amber-400/60 active:scale-[0.98] transition-all space-y-2 touch-target"
-        >
-          <div className="w-10 h-10 rounded-xl bg-teal-50 dark:bg-teal-950/70 border border-teal-200 dark:border-teal-800 text-teal-600 dark:text-teal-300 flex items-center justify-center shadow-xs">
-            <Archive className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-              Histórico & WhatsApp
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Relatórios e cópia direta
-            </div>
-          </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 text-left shadow-xs hover:border-amber-400/60 active:scale-[0.98] transition-all space-y-2 touch-target"
-        >
-          <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs">
-            <SlidersHorizontal className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="font-extrabold text-sm text-slate-900 dark:text-white leading-tight">
-              Ajustes & Sistema
-            </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Obreiros, senha e APK
-            </div>
-          </div>
-        </button>
-      </div>
-
-      {/* Banner de Download do APK */}
-      <div className="bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
-            <Download className="w-5 h-5" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200 truncate">
-              Instalar Aplicativo Oficial (APK)
-            </div>
-            <div className="text-[11px] text-emerald-700 dark:text-emerald-400 truncate">
-              Para Android • Tela cheia e notificações
-            </div>
-          </div>
-        </div>
-
-        <a
-          href="/ipra-avisos.apk"
-          download="ipra-avisos.apk"
-          className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs shrink-0 shadow-xs transition-all"
-        >
-          Baixar APK
-        </a>
-      </div>
     </div>
   );
 };

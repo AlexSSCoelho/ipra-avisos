@@ -38,14 +38,14 @@ Este checklist reflete a branch `implementacao-fases` após o commit `e361d90a54
 
 **P0 é baseline estável. Não reabrir P0 salvo regressão concreta reproduzida durante P1/P2.**
 
-## P1 — arquitetura de informação e experiência mobile
+## P1 — arquitetura de informação e experiência mobile — CONCLUÍDO
 
-- [ ] tornar navegação orientada à tarefa;
-- [ ] simplificar Home e remover duplicações;
-- [ ] reduzir cabeçalho fixo;
-- [ ] separar Preferências de Administração;
-- [ ] clarificar identificação versus autenticação;
-- [ ] refinar linguagem operacional e remover termos técnicos/ambíguos.
+- [x] tornar navegação orientada à tarefa;
+- [x] simplificar Home e remover duplicações;
+- [x] reduzir cabeçalho fixo;
+- [x] separar Preferências de Administração;
+- [x] clarificar identificação versus autenticação;
+- [x] refinar linguagem operacional e remover termos técnicos/ambíguos.
 
 ## P2 — formulários, histórico e refinamento
 

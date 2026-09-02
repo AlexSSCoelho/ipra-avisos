@@ -191,12 +191,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
         {/* Abas do Modal */}
         <div className="flex items-center gap-1 px-4 py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-100/60 dark:bg-slate-950/80 overflow-x-auto no-scrollbar shrink-0">
           {[
-            { id: 'geral', label: 'Geral & Perfil' },
+            { id: 'geral', label: 'Preferências' },
             ...(isAdmin ? [
               { id: 'dirigente', label: 'Dirigente' },
               { id: 'obreiros', label: 'Obreiros' },
-              { id: 'seguranca', label: 'Segurança' },
-              { id: 'nuvem', label: 'Nuvem' },
+              { id: 'seguranca', label: 'Segurança & PIN' },
+              { id: 'nuvem', label: 'Nuvem & Sistema' },
             ] : [])
           ].map((tab) => {
             const isActive = activeTab === tab.id;
