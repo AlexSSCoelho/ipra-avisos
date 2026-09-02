@@ -67,11 +67,38 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     novoDirigente: Obreiro,
     adminPin?: string
   ): { success: boolean; message?: string } => {
-    if (adminPin !== undefined && !verifyAdminPin(adminPin)) {
-      return { success: false, message: 'Senha de administrador incorreta.' };
+    // Sem culto ativo, não há como trocar dirigente
+    if (!cultoAtivo || cultoAtivo.status !== 'em_andamento') {
+      return { success: false, message: 'Não há culto em andamento para alterar o dirigente.' };
     }
 
-    storageService.setDirigenteDoCulto(novoDirigente);
+    // Obreiro deve estar ativo
+    if (novoDirigente.ativo === false) {
+      return { success: false, message: 'Este obreiro não está ativo.' };
+    }
+
+    // Se já é o dirigente atual e está apenas se identificando (sem troca real), permite
+    const jaDirigente = cultoAtivo.dirigenteId === novoDirigente.id;
+    if (jaDirigente) {
+      // Apenas identificação — sem alterar estado do culto
+      return { success: true };
+    }
+
+    // Troca real de dirigente: admin pode fazer livremente;
+    // qualquer outro precisa fornecer PIN válido (string não-vazia)
+    if (!isAdmin) {
+      if (!adminPin || adminPin.trim().length === 0) {
+        return { success: false, message: 'É necessário informar a senha administrativa para trocar o dirigente.' };
+      }
+      if (!verifyAdminPin(adminPin)) {
+        return { success: false, message: 'Senha administrativa incorreta.' };
+      }
+    }
+
+    const ok = storageService.setDirigenteDoCulto(novoDirigente);
+    if (!ok) {
+      return { success: false, message: 'Não foi possível alterar o dirigente. Verifique se há culto ativo.' };
+    }
     return { success: true };
   };
 

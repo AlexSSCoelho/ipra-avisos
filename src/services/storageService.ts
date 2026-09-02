@@ -86,8 +86,12 @@ class StorageService {
     }
   }
 
-  public getAdminPin(): string {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || '1234';
+  public getAdminPin(): string | null {
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) ?? null;
+  }
+
+  public hasPinConfigured(): boolean {
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) !== null;
   }
 
   public setAdminPin(newPin: string) {
@@ -155,18 +159,10 @@ class StorageService {
     }
   }
 
-  // Troca o dirigente garantindo a regra de 1 dirigente ativo por vez
-  public setDirigenteDoCulto(obreiro: Obreiro) {
-    const culto = this.getCultoAtivo() || {
-      id: `culto_${Date.now()}`,
-      data: new Date().toISOString().split('T')[0],
-      nomeCulto: 'Culto da Igreja',
-      horarioInicio: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      dirigenteId: obreiro.id,
-      dirigenteNome: obreiro.nome,
-      dirigenteCargo: obreiro.cargo,
-      status: 'em_andamento',
-    };
+  // Troca o dirigente de um culto existente. NÃO cria culto novo.
+  public setDirigenteDoCulto(obreiro: Obreiro): boolean {
+    const culto = this.getCultoAtivo();
+    if (!culto) return false; // sem culto ativo → operação inválida
 
     const updatedCulto: CultoAtivo = {
       ...culto,
@@ -177,7 +173,9 @@ class StorageService {
     };
 
     this.saveCultoAtivo(updatedCulto);
+    return true;
   }
+
 
   // --- Avisos ---
   public getAvisos(): AvisoItem[] {

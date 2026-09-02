@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { 
   Church, 
-  UserPlus, 
   ArrowRight, 
   KeyRound,
   Check,
-  Crown
+  Crown,
+  ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCulto } from '../../context/CultoContext';
@@ -18,30 +18,109 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
-  const { obreiros, login, addObreiro } = useAuth();
+  const { obreiros, login, addObreiro, isBootstrap, setInitialPin } = useAuth();
   const { cultoAtivo, definirDirigente } = useCulto();
   const { fontScale, increaseFontSize, decreaseFontSize, resetFontSize } = useAccessibility();
 
+  // --- Identificação normal ---
   const [selectedObreiro, setSelectedObreiro] = useState<Obreiro | null>(obreiros[0] || null);
   const [isDirigindoCulto, setIsDirigindoCulto] = useState(false);
   const [pin, setPin] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  const [showNewUserForm, setShowNewUserForm] = useState(false);
 
-  // Formulário de novo obreiro
-  const [novoNome, setNovoNome] = useState('');
-  const [novoCargo, setNovoCargo] = useState<CargoObreiro>('diacono');
-  const [novoGenero, setNovoGenero] = useState<'homem' | 'mulher'>('homem');
+  // --- Bootstrap: primeira configuração ---
+  const [bootstrapStep, setBootstrapStep] = useState<'form' | 'pin'>('form');
+  const [bootstrapNome, setBootstrapNome] = useState('');
+  const [bootstrapCargo, setBootstrapCargo] = useState<CargoObreiro>('pastor');
+  const [bootstrapGenero, setBootstrapGenero] = useState<'homem' | 'mulher'>('homem');
+  const [bootstrapPin, setBootstrapPin] = useState('');
+  const [bootstrapPinConfirm, setBootstrapPinConfirm] = useState('');
+  const [bootstrapError, setBootstrapError] = useState('');
 
+  // ──────────────────────────────────────────────
+  // FLUXO DE BOOTSTRAP
+  // ──────────────────────────────────────────────
+  const handleBootstrapContinuar = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bootstrapNome.trim()) {
+      setBootstrapError('Informe o nome do administrador.');
+      return;
+    }
+    setBootstrapError('');
+    setBootstrapStep('pin');
+  };
+
+  const handleBootstrapConcluir = (e: React.FormEvent) => {
+    e.preventDefault();
+    setBootstrapError('');
+    if (!bootstrapPin || bootstrapPin.trim().length < 4) {
+      setBootstrapError('O PIN deve ter pelo menos 4 dígitos.');
+      return;
+    }
+    if (bootstrapPin !== bootstrapPinConfirm) {
+      setBootstrapError('Os PINs não coincidem.');
+      return;
+    }
+
+    // Criar primeiro admin (bypass de verificação, pois estamos em bootstrap)
+    const result = addObreiro(
+      {
+        nome: bootstrapNome.trim(),
+        cargo: bootstrapCargo,
+        genero: bootstrapGenero,
+        isAdmin: true,
+        ativo: true,
+      },
+      true // bypassAdminCheck no bootstrap
+    );
+
+    if (!result.success) {
+      setBootstrapError(result.message || 'Erro ao criar administrador.');
+      return;
+    }
+
+    const pinOk = setInitialPin(bootstrapPin);
+    if (!pinOk) {
+      setBootstrapError('Não foi possível definir o PIN.');
+      return;
+    }
+
+    // Encontrar o obreiro recém-criado (último da lista que virá via listener)
+    // Fazemos login diretamente passando os dados
+    const novoAdmin: Obreiro = {
+      id: '', // será atualizado pelo listener; aguardamos o reload
+      nome: bootstrapNome.trim(),
+      cargo: bootstrapCargo,
+      genero: bootstrapGenero,
+      isAdmin: true,
+      ativo: true,
+    };
+    // Força reload para que o listener atualize obreiros e possamos logar
+    window.location.reload();
+    // (o usuário verá a tela de login normal com seu nome já na lista)
+    void novoAdmin;
+  };
+
+  // ──────────────────────────────────────────────
+  // FLUXO NORMAL DE IDENTIFICAÇÃO
+  // ──────────────────────────────────────────────
   const handleEntrar = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!selectedObreiro) {
       setErrorMsg('Selecione seu nome na lista para prosseguir.');
       return;
     }
 
     if (isDirigindoCulto) {
-      const result = definirDirigente(selectedObreiro, pin || undefined);
+      // Se o PIN não foi fornecido, a chamada ao definirDirigente com PIN vazio
+      // será rejeitada no contexto, mas emitimos mensagem clara aqui primeiro
+      if (!pin || pin.trim().length === 0) {
+        setErrorMsg('Informe a senha administrativa para assumir a direção do culto.');
+        return;
+      }
+      // Se o usuário já é o dirigente atual, a chamada também funciona
+      const result = definirDirigente(selectedObreiro, pin);
       if (!result.success) {
         setErrorMsg(result.message || 'Senha incorreta para assumir a direção do culto.');
         return;
@@ -50,21 +129,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
     login(selectedObreiro);
     onSuccess(isDirigindoCulto || cultoAtivo?.dirigenteId === selectedObreiro.id);
-  };
-
-  const handleCadastrarObreiro = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!novoNome.trim()) return;
-
-    addObreiro({
-      nome: novoNome.trim(),
-      cargo: novoCargo,
-      genero: novoGenero,
-      ativo: true,
-    });
-
-    setShowNewUserForm(false);
-    setNovoNome('');
   };
 
   return (
@@ -99,23 +163,158 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
         </span>
       </div>
 
-      {/* Cartão de Login Institucional */}
+      {/* Cartão Principal */}
       <div className="max-w-md mx-auto w-full bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-7 my-auto">
         
         {/* Cabeçalho */}
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 mx-auto flex items-center justify-center text-amber-400 mb-3 shadow-inner">
-            <Church className="w-6 h-6" />
+            {isBootstrap ? <ShieldCheck className="w-6 h-6" /> : <Church className="w-6 h-6" />}
           </div>
           <h1 className="text-xl font-bold tracking-tight text-white">
             IPRA Auriflama
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            Sistema Ministerial de Avisos & Púlpito
+            {isBootstrap ? 'Primeira configuração do sistema' : 'Sistema Ministerial de Avisos & Púlpito'}
           </p>
         </div>
 
-        {!showNewUserForm ? (
+        {/* ── BOOTSTRAP ── */}
+        {isBootstrap && (
+          <>
+            {bootstrapStep === 'form' ? (
+              <form onSubmit={handleBootstrapContinuar} className="space-y-4">
+                <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-300 text-xs">
+                  Nenhum obreiro cadastrado. Configure o primeiro administrador para começar.
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Nome do Administrador:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    value={bootstrapNome}
+                    onChange={(e) => setBootstrapNome(e.target.value)}
+                    placeholder="Ex: Pr. João da Silva"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Função:
+                    </label>
+                    <select
+                      value={bootstrapCargo}
+                      onChange={(e) => setBootstrapCargo(e.target.value as CargoObreiro)}
+                      className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
+                    >
+                      <option value="pastor">Pastor</option>
+                      <option value="presbitero">Presbítero</option>
+                      <option value="diacono">Diácono</option>
+                      <option value="diaconisa">Diaconisa</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                      Gênero:
+                    </label>
+                    <select
+                      value={bootstrapGenero}
+                      onChange={(e) => setBootstrapGenero(e.target.value as 'homem' | 'mulher')}
+                      className="w-full px-2.5 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
+                    >
+                      <option value="homem">Homem</option>
+                      <option value="mulher">Mulher</option>
+                    </select>
+                  </div>
+                </div>
+
+                {bootstrapError && (
+                  <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-xs">
+                    {bootstrapError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2"
+                >
+                  <span>Continuar</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleBootstrapConcluir} className="space-y-4">
+                <div className="p-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-200 text-xs">
+                  <span className="font-bold text-amber-400">Administrador:</span> {bootstrapNome}
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
+                    <KeyRound className="w-3 h-3" />
+                    <span>Criar PIN administrativo:</span>
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    autoFocus
+                    value={bootstrapPin}
+                    onChange={(e) => setBootstrapPin(e.target.value)}
+                    placeholder="Mínimo 4 dígitos"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                    Confirmar PIN:
+                  </label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    value={bootstrapPinConfirm}
+                    onChange={(e) => setBootstrapPinConfirm(e.target.value)}
+                    placeholder="Repita o PIN"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                {bootstrapError && (
+                  <div className="p-3 rounded-xl bg-rose-950/50 border border-rose-800 text-rose-300 text-xs">
+                    {bootstrapError}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setBootstrapStep('form'); setBootstrapError(''); }}
+                    className="flex-1 py-2.5 text-xs font-semibold rounded-xl border border-slate-700 text-slate-300"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Concluir</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </>
+        )}
+
+        {/* ── IDENTIFICAÇÃO NORMAL ── */}
+        {!isBootstrap && (
           <form onSubmit={handleEntrar} className="space-y-4">
             
             {/* Lista de Obreiros */}
@@ -208,7 +407,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
                       inputMode="numeric"
                       value={pin}
                       onChange={(e) => setPin(e.target.value)}
-                      placeholder="Senha do dirigente (padrão: 1234)"
+                      placeholder="Senha administrativa"
                       className="w-full pl-8.5 pr-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
                     />
                   </div>
@@ -232,113 +431,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
               <ArrowRight className="w-4 h-4 font-bold" />
             </button>
 
-            {/* Botão Novo Obreiro */}
-            <div className="text-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowNewUserForm(true)}
-                className="text-xs text-slate-400 hover:text-white flex items-center justify-center gap-1.5 mx-auto font-medium transition-colors"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Cadastrar novo obreiro</span>
-              </button>
-            </div>
-          </form>
-        ) : (
-          /* Formulário de Cadastro */
-          <form onSubmit={handleCadastrarObreiro} className="space-y-3.5">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-              <h3 className="font-semibold text-xs uppercase tracking-wider text-slate-300">
-                Cadastro de Obreiro
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowNewUserForm(false)}
-                className="text-xs text-slate-400 hover:text-white"
-              >
-                Voltar
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Nome Completo:
-              </label>
-              <input
-                type="text"
-                required
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-                placeholder="Ex: Pb. Marcos Souza"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Função Eclesiástica:
-              </label>
-              <select
-                value={novoCargo}
-                onChange={(e) => setNovoCargo(e.target.value as CargoObreiro)}
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-700 bg-slate-950 text-white focus:border-amber-500 focus:outline-none"
-              >
-                <option value="pastor">Pastor</option>
-                <option value="presbitero">Presbítero</option>
-                <option value="diacono">Diácono</option>
-                <option value="diaconisa">Diaconisa</option>
-                <option value="evangelista_h">Evangelista (Homem)</option>
-                <option value="evangelista_m">Evangelista (Mulher)</option>
-                <option value="missionario">Missionário</option>
-                <option value="missionaria">Missionária</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Gênero:
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setNovoGenero('homem')}
-                  className={`py-2 text-xs rounded-lg border font-semibold ${
-                    novoGenero === 'homem'
-                      ? 'bg-slate-800 border-amber-500 text-white'
-                      : 'border-slate-800 text-slate-400 hover:bg-slate-900'
-                  }`}
-                >
-                  Homem
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setNovoGenero('mulher')}
-                  className={`py-2 text-xs rounded-lg border font-semibold ${
-                    novoGenero === 'mulher'
-                      ? 'bg-slate-800 border-amber-500 text-white'
-                      : 'border-slate-800 text-slate-400 hover:bg-slate-900'
-                  }`}
-                >
-                  Mulher
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowNewUserForm(false)}
-                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-slate-700 text-slate-300"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 py-2 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950"
-              >
-                Salvar
-              </button>
-            </div>
+            {/* Cadastro de obreiro: apenas admin via Settings */}
+            {/* (removido do login após bootstrap — gerenciado em Ajustes > Obreiros) */}
           </form>
         )}
       </div>

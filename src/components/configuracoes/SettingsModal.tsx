@@ -76,9 +76,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     e.preventDefault();
     const target = obreiros.find((o) => o.id === selectedDirigenteId);
     if (!target) return;
-    definirDirigente(target);
-    setDirigenteSuccess(`Dirigente alterado para ${target.nome}.`);
-    setTimeout(() => setDirigenteSuccess(''), 3000);
+    const result = definirDirigente(target);
+    if (result.success) {
+      setDirigenteSuccess(`Dirigente alterado para ${target.nome}.`);
+      setTimeout(() => setDirigenteSuccess(''), 3000);
+    } else {
+      setDirigenteSuccess(`Erro: ${result.message || 'Não foi possível alterar o dirigente.'}`);
+    }
   };
 
   const handleAddObreiro = (e: React.FormEvent) => {
@@ -529,7 +533,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   required
                   value={currentPin}
                   onChange={(e) => setCurrentPin(e.target.value)}
-                  placeholder="Ex: 1234"
+                  placeholder="Senha atual"
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
                 />
               </div>

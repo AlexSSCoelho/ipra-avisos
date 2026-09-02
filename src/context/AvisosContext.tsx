@@ -23,7 +23,7 @@ interface AvisosContextType {
   adicionarAviso: (params: AddAvisoParams) => void;
   marcarComoAnunciado: (id: string) => void;
   desmarcarComoAnunciado: (id: string) => void;
-  excluirAviso: (id: string) => void;
+  excluirAviso: (id: string) => { success: boolean; message?: string };
   totalPendentes: number;
   totalAnunciados: number;
   totalVisitantes: number;
@@ -124,11 +124,26 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     storageService.updateAvisoStatus(id, 'pendente');
   };
 
+  const excluirAviso = (id: string): { success: boolean; message?: string } => {
+    const aviso = avisos.find((a) => a.id === id);
+    if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
 
-  const excluirAviso = (id: string) => {
+    // Aviso já anunciado não pode ser excluído por este fluxo
+    if (aviso.status === 'anunciado') {
+      return { success: false, message: 'Um aviso já anunciado não pode ser cancelado.' };
+    }
+
+    // Apenas o autor (aviso pendente próprio) ou dirigente/admin podem excluir
+    const isAutor = currentUser?.id === aviso.autorId;
+    if (!isAutor && !isDirigente && !isAdmin) {
+      return { success: false, message: 'Sem permissão para cancelar este aviso.' };
+    }
+
     setAvisos((prev) => prev.filter((item) => item.id !== id));
     storageService.deleteAviso(id);
+    return { success: true };
   };
+
 
   const totalPendentes = avisosPendentes.length;
   const totalAnunciados = avisosAnunciados.length;

@@ -138,7 +138,10 @@ export const MeusAvisosHoje: React.FC = () => {
                     type="button"
                     onClick={() => {
                       if (window.confirm('Deseja cancelar o envio deste aviso?')) {
-                        excluirAviso(aviso.id);
+                        const result = excluirAviso(aviso.id);
+                        if (!result.success && result.message) {
+                          alert(result.message);
+                        }
                       }
                     }}
                     className="text-xs text-rose-500 hover:text-rose-700 dark:hover:text-rose-400 flex items-center gap-1.5 font-bold px-2.5 py-1.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
