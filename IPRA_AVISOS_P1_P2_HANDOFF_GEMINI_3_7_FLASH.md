@@ -1,235 +1,335 @@
-# IPRA Avisos — handoff de P1/P2 para Gemini 3.7 Flash no Antigravity
+# IPRA Avisos — handoff exclusivo de P2 para Gemini 3.7 Flash no Antigravity
 
 # Objetivo
 
-Continuar a implementação do IPRA Avisos na branch `implementacao-fases`, preservando o P0 já encerrado e corrigindo uma última rodada curta de P1 antes de iniciar P2.
+Continuar a implementação do IPRA Avisos exclusivamente pela P2 na branch `implementacao-fases`, preservando os baselines P0 e P1 já encerrados.
 
 O executor é **Gemini 3.7 Flash no Google Antigravity**.
 
-Use este arquivo em conjunto com `IPRA_AVISOS_UX_IMPLEMENTATION_GEMINI_3_7_FLASH.md`. O plano principal continua sendo a fonte de requisitos; este handoff registra o estado real da branch e as correções pontuais necessárias antes de P2.
+Use este arquivo em conjunto com `IPRA_AVISOS_UX_IMPLEMENTATION_GEMINI_3_7_FLASH.md`. O plano principal continua sendo a fonte de requisitos; este handoff registra o estado aprovado de partida e o escopo operacional da P2.
 
-# Baselines
+# Baseline aprovado
 
 Branch: `implementacao-fases`
 
 P0 encerrado: `e361d90a5455464a3d06070007836ad476529769`
 
-Primeira implementação de P1 revisada: `168a766f1852d2f99901a2906af81a83ced943de`
+P1 inicial: `168a766f1852d2f99901a2906af81a83ced943de`
 
-P0 é baseline estável. Não refaça bootstrap, autorização, PIN, escopo do culto, swipe, horário ou regras de exclusão de aviso salvo regressão concreta reproduzida.
+P1 corretiva aprovada: `f44e6a934cbd7905848ad98e8234db153e632e50`
 
-# Invariantes de P0
+A P1 foi revisada e aprovada. Não reabra P0 ou P1 sem regressão concreta reproduzida durante P2.
 
-- instalação nova começa sem dados fictícios;
-- primeiro uso usa bootstrap explícito do primeiro administrador;
-- não existe PIN padrão/fallback `1234`;
-- PIN administrativo é numérico e tem no mínimo 4 dígitos;
-- `isAdmin` é permissão explícita; cargo não concede administração em novos registros;
-- migração legada só promove registros antigos quando `isAdmin` estava realmente ausente, preservando `isAdmin: false`;
-- `currentUser` é sincronizado com o registro migrado correspondente;
-- `addObreiro()` normal não possui bypass público;
-- instalação existente com administrador e sem PIN possui fluxo explícito para configurar o primeiro PIN;
-- dirigente já definido pode se identificar sem redigitar PIN; troca real de dirigente continua autorizada;
-- `setDirigenteDoCulto()` nunca cria culto;
-- apenas administrador inicia novo culto;
-- apenas dirigente atual ou administrador encerra culto em andamento;
-- encerrar sem culto ou culto já finalizado retorna falha;
-- horário escolhido no início do culto é persistido;
-- métricas e avisos operacionais usam o culto atual;
-- relatório P0 não mistura cultos;
-- swipe respeita controles/`no-swipe`;
-- autor pode cancelar o próprio aviso pendente; dirigente/admin podem cancelar pendente conforme regra; anunciado não é apagado pelo fluxo comum.
-
-# Estado atual da P1
-
-A primeira implementação de P1 trouxe ganhos reais e deve ser preservada:
+# Estado aprovado de P1 que deve ser preservado
 
 - bottom navigation com quatro destinos principais;
 - destino inicial contextual após identificação: dirigente → Púlpito, diácono/diaconisa → Anotação, demais → Home;
-- cabeçalho mais compacto;
-- Home significativamente simplificada;
-- nomenclatura de Ajustes e administração melhorada;
-- checklists foram atualizados no commit da P1, mas **P1 não deve ser tratada como concluída até a rodada abaixo ser implementada e validada**.
+- cabeçalho compacto;
+- Home simplificada e orientada ao contexto;
+- dirigente vê Púlpito como ação primária quando há culto em andamento;
+- demais usuários mantêm Anotação como ação primária na Home;
+- `Iniciar Novo Culto` aparece apenas para administrador;
+- Home e Header tratam culto ativo somente quando `status === 'em_andamento'`;
+- culto finalizado não é apresentado como sessão ativa;
+- acesso redundante de Ajustes foi removido da Home;
+- Preferências e Administração foram separadas mental e visualmente no `SettingsModal`;
+- Firebase/runtime config ficou em área de Sistema avançado;
+- P0 permaneceu preservado.
 
-Não reverta a bottom navigation nem restaure o cabeçalho antigo.
+Não reverta a bottom navigation, o cabeçalho compacto, a Home contextual ou a separação de Settings.
 
-# Correções pontuais finais da P1
+# Invariantes de P0/P1 durante P2
 
-Trate os cinco itens abaixo como o escopo completo desta rodada. **Não iniciar P2 no mesmo commit.**
+- instalação nova sem dados fictícios;
+- bootstrap explícito do primeiro administrador;
+- nenhum PIN padrão/fallback;
+- `isAdmin` explícito, sem concessão automática por cargo em novos registros;
+- `addObreiro()` sem bypass público;
+- somente administrador inicia culto;
+- somente dirigente atual ou administrador encerra culto em andamento;
+- `setDirigenteDoCulto()` nunca cria culto;
+- culto finalizado não deve ser tratado como ativo;
+- horário escolhido é persistido;
+- métricas e avisos operacionais usam o culto correto;
+- swipe respeita controles e áreas `no-swipe`;
+- regras de cancelamento/exclusão de aviso pendente permanecem válidas;
+- aviso anunciado não é apagado pelo fluxo comum;
+- offline-first deve permanecer funcional;
+- bottom navigation e destino inicial contextual devem continuar estáveis.
 
-## 1. Tornar a prioridade da Home realmente contextual
+# P2 — escopo completo
 
-No estado atual, quando existe culto em andamento, a Home mostra sempre:
+Implemente P2 por subfases revisáveis. Não tente resolver todos os itens em um único commit grande se isso dificultar validação ou migração.
 
-1. `Anotar Novo Aviso` como ação visualmente primária;
-2. `Abrir Púlpito do Altar` como ação secundária.
+## P2A — formulários, dados e recuperação de pendentes
 
-Isso atende bem à recepção/diaconia, mas não ao dirigente atual.
+Arquivos prioritários:
 
-### Resultado esperado
+- `src/components/diacono/FormVisitante.tsx`
+- `src/components/diacono/FormReuniao.tsx`
+- `src/components/diacono/FormOracao.tsx`
+- `src/components/diacono/FormAvisoGeral.tsx`
+- `src/components/diacono/MeusAvisosHoje.tsx`
+- `src/context/AvisosContext.tsx`
+- `src/services/storageService.ts`
+- tipos relacionados, somente quando necessário
 
-- se `isDirigente === true`, **Púlpito** deve ser a ação primária visual e operacional;
-- para diácono/diaconisa, **Anotação** permanece como ação primária;
-- para administrador que não está dirigindo, mantenha Home como hub equilibrado, sem assumir que ele está operando o Púlpito;
-- não crie três Homes diferentes; apenas ajuste prioridade/ordem/ênfase conforme contexto;
-- preserve acesso aos outros módulos via bottom navigation.
+### 1. Não fabricar valores de campos opcionais
 
-Arquivos prioritários: `src/components/home/HomeScreen.tsx`, eventualmente `src/App.tsx` apenas se necessário para fornecer contexto já existente.
+No formulário de visitante, ausência de informação não deve virar automaticamente valores presumidos como `Auriflama` ou `Primeira Visita`.
 
-## 2. Corrigir UI de `Iniciar Novo Culto`
+Resultado esperado:
 
-No `Header`, a ação `Iniciar Novo Culto` aparece para `(isAdmin || isDirigente)`, mas o domínio P0 permite iniciar culto somente a administrador.
+- campo opcional vazio permanece vazio/ausente;
+- valor padrão só existe quando for uma decisão explícita de produto e estiver visível ao usuário;
+- registros legados continuam renderizando normalmente;
+- não apague nem reescreva dados antigos para uniformizar schema.
 
-### Resultado esperado
+### 2. Simplificar o formulário de reunião
 
-- renderizar essa ação somente para `isAdmin`;
-- não afrouxar `CultoContext.iniciarNovoCulto()`;
-- UI e domínio devem comunicar a mesma permissão.
+Organize a sequência cognitiva como:
 
-Arquivo prioritário: `src/components/common/Header.tsx`.
+**Qual reunião? → Quando? → Onde? → Responsável**
 
-## 3. Tratar corretamente culto finalizado na Home e no Header
+Resultado esperado:
 
-`finalizarCulto()` persiste o culto com `status: 'finalizado'`; portanto `cultoAtivo !== null` não significa que existe culto em andamento.
+- reduzir carga visual sem transformar obrigatoriamente em wizard;
+- progressive disclosure apenas se realmente reduzir complexidade;
+- manter uso rápido em celular;
+- evitar campos obrigatórios que não influenciam nenhuma saída real.
 
-No estado atual, Home/Header podem tratar qualquer objeto `cultoAtivo` como sessão ativa.
+### 3. Persistir datas absolutas
 
-### Resultado esperado
+Expressões como `Próxima Terça-feira` não podem ser a única informação persistida.
 
-Use explicitamente um estado equivalente a:
+Resultado esperado:
 
-```ts
-const cultoEmAndamento = cultoAtivo?.status === 'em_andamento';
-```
+- persistir data absoluta em formato previsível, preferencialmente ISO compatível com a arquitetura atual;
+- renderizar descrição amigável separadamente;
+- registros antigos com texto relativo devem continuar legíveis;
+- se precisar de migração, faça-a de forma compatível e não destrutiva.
 
-- Header só deve exibir indicador de culto ativo quando `status === 'em_andamento'`;
-- Home só deve mostrar card `Culto em Andamento`, métricas operacionais, ações de anotação/Púlpito e encerramento quando a sessão estiver realmente em andamento;
-- culto finalizado deve cair no estado sem sessão ativa, sem dizer que está em andamento;
-- não apague automaticamente o culto finalizado para resolver UI; Histórico P2 ainda poderá precisar desse estado/dado.
+### 4. Revisar campos sem efeito real
 
-Arquivos prioritários: `src/components/common/Header.tsx`, `src/components/home/HomeScreen.tsx`.
+Antes de remover, tornar opcional ou alterar categoria/público-alvo em `FormOracao` e `FormAvisoGeral`, localize onde cada campo é consumido em:
 
-## 4. Remover duplicação desnecessária de Ajustes
+- Púlpito;
+- Histórico;
+- filtros;
+- relatórios;
+- regras operacionais.
 
-Após P1, Ajustes ainda aparece em múltiplos lugares: botão fixo no Header, item do menu do usuário e botão adicional na Home.
+Se um campo não influencia nada relevante, simplifique-o. Se influencia, preserve seu significado.
 
-### Resultado esperado
+Não remova campos apenas por parecerem redundantes visualmente.
 
-- remova o acesso redundante da Home;
-- mantenha um acesso principal previsível no Header/perfil;
-- se Header e menu do perfil continuarem oferecendo caminhos para a mesma área, evite que ambos tenham o mesmo peso visual; o Header pode manter o acesso direto e o menu servir como contexto/perfil;
-- não adicione novo atalho substituto em outra área.
+### 5. Melhorar edição/recuperação de aviso pendente
 
-Arquivo prioritário: `src/components/home/HomeScreen.tsx`; revisar `Header.tsx` apenas para coerência.
+O cancelamento de pendente já existe e tem regras de autorização do P0.
 
-## 5. Separar melhor Preferências de Administração
+Resultado esperado:
 
-A primeira P1 renomeou as abas do `SettingsModal`, mas continua expondo uma única faixa horizontal de cinco áreas administrativas/técnicas dentro do mesmo modal:
+- permitir corrigir um aviso enquanto ainda está pendente, se puder ser feito sem complexidade desnecessária;
+- preferir edição explícita ou ação `Editar`/`Desfazer` a fluxos implícitos;
+- preservar autor, culto e identidade do registro;
+- não permitir editar/apagar silenciosamente aviso já anunciado;
+- não afrouxar autorização existente.
 
-- Preferências;
-- Dirigente;
-- Obreiros;
-- Segurança & PIN;
-- Nuvem & Sistema.
+## Validação de P2A
 
-Isso ainda mistura uso cotidiano com administração e mantém a navegação horizontal como principal estrutura do modal.
-
-### Resultado esperado
-
-Não é obrigatório criar uma nova arquitetura de rotas ou vários modais. Faça a menor alteração que produza uma separação mental clara:
-
-- **Preferências / Identificação** devem formar a área comum;
-- **Administração** deve ser apresentada como área separada, disponível apenas a admin;
-- dentro de Administração, podem existir subseções para Culto/Dirigente, Pessoas, Segurança e Sistema avançado;
-- Firebase/runtime JSON, se permanecer, deve estar claramente em **Sistema avançado**, não ao lado de preferências comuns;
-- evite depender de uma faixa horizontal longa como único mecanismo de organização em ~360 px;
-- preserve todos os contratos de segurança do P0.
-
-Você pode manter `SettingsModal.tsx` como componente único se a hierarquia ficar clara no render. Não faça refatoração estrutural grande apenas para dividir arquivos.
-
-Arquivo prioritário: `src/components/configuracoes/SettingsModal.tsx`.
-
-# O que não alterar nesta rodada
-
-- bottom navigation atual, salvo correção necessária para regressão concreta;
-- destino inicial contextual de login já implementado;
-- AuthContext, bootstrap, PIN e migrações P0;
-- regras de dirigente/início/encerramento no domínio;
-- formulários de visitante/oração/reunião/comunicado;
-- Histórico por sessões;
-- modo focado do Púlpito;
-- schema de storage;
-- P2 em geral.
-
-# Validação obrigatória da P1 corretiva
-
-Execute:
+Executar:
 
 ```bash
 npm run lint
 npm run build
 ```
 
-Além disso valide no render real, incluindo aproximadamente 360 px:
+Validar no mínimo:
 
-1. dirigente com culto em andamento abre Home → Púlpito aparece como ação primária;
-2. diácono/diaconisa com culto em andamento → Anotação permanece primária;
-3. administrador não dirigente mantém acesso equilibrado aos módulos;
-4. dirigente não administrador não vê `Iniciar Novo Culto` no Header/menu;
-5. administrador vê `Iniciar Novo Culto`;
-6. após encerrar culto, Home e Header não continuam mostrando `Culto em Andamento`;
-7. culto finalizado não libera ações operacionais como se ainda estivesse ativo;
-8. Home não repete botão de Ajustes já disponível no Header/perfil;
-9. usuário comum encontra Preferências/Identificação sem navegar por controles administrativos;
-10. administrador distingue claramente área comum de área administrativa;
-11. Firebase/configuração técnica está em Sistema avançado;
-12. Settings continua utilizável sem truncamento problemático em ~360 px;
-13. bottom navigation continua funcional;
-14. Púlpito e Anotação continuam acessíveis;
-15. invariantes P0 continuam válidos.
+1. visitante sem cidade/igreja opcional não recebe valor inventado;
+2. visitante com valor preenchido preserva o valor;
+3. reunião salva data absoluta correta;
+4. apresentação da data continua amigável;
+5. registros antigos continuam abrindo;
+6. campos removidos/opcionais não quebram Púlpito ou relatório;
+7. autor consegue corrigir pendente conforme regra definida;
+8. usuário não autorizado não altera pendente de outro quando a regra não permitir;
+9. aviso anunciado não entra em edição comum;
+10. recarga offline preserva dados.
 
-# Critério de pronto da P1
+Não iniciar P2B no mesmo commit se P2A ainda não estiver validada.
 
-Considere P1 encerrada somente quando:
+# P2B — Histórico real por culto/sessão
 
-- a Home prioriza a próxima ação conforme o contexto do usuário;
-- UI de iniciar culto corresponde à autorização real do domínio;
-- culto finalizado não é apresentado como ativo;
-- duplicação de Ajustes foi reduzida;
-- Preferências e Administração são mental e visualmente distintas;
-- bottom navigation e cabeçalho compacto permanecem estáveis;
-- não houve regressão de P0;
-- `npm run lint` e `npm run build` passam;
-- interface foi conferida em mobile estreito.
+Arquivos prioritários:
 
-Ao concluir, atualize os checklists Gemini e Sonnet marcando P1 como concluída somente após esta rodada. Faça um commit separado na branch `implementacao-fases` e não inicie P2 nesse mesmo commit.
+- `src/components/historico/HistoricoScreen.tsx`
+- `src/services/storageService.ts`
+- `src/context/CultoContext.tsx`
+- `src/context/AvisosContext.tsx`
+- tipos relacionados
 
-# Contexto de P2 — usar apenas depois de fechar P1
+## Contexto
 
-## Formulários
+O P0 restringiu a visão do Histórico ao culto corrente apenas para impedir mistura incorreta. Essa solução foi provisória de integridade, não o desenho final do Histórico.
 
-- `FormVisitante.tsx`: não fabricar `Auriflama`/`Primeira Visita` quando campos opcionais estiverem vazios;
-- `FormReuniao.tsx`: reduzir carga cognitiva e persistir datas absolutas;
-- `FormOracao.tsx` e `FormAvisoGeral.tsx`: antes de remover categorias/públicos, localizar onde esses campos são realmente usados;
-- `MeusAvisosHoje.tsx`: cancelamento de pendente já existe; P2 pode avaliar edição/desfazer enquanto pendente sem permitir alteração silenciosa de anunciado.
+P2B deve implementar Histórico real por sessão/culto.
 
-## Histórico
+Antes de editar a UI, determine como o storage atual representa:
 
-O P0 restringiu a visão atual ao culto corrente apenas para impedir mistura incorreta. Isso não é o Histórico final.
+- culto ativo;
+- culto finalizado;
+- `cultoId` dos avisos;
+- possibilidade de enumerar sessões anteriores.
 
-P2 deve implementar Histórico real por culto/sessão, preservando registros antigos. Antes de mudar UI, determine como o storage enumera cultos finalizados. Se faltar catálogo, implemente a menor extensão compatível possível.
+Se hoje não existe catálogo confiável de cultos encerrados, implemente a menor extensão de domínio/storage necessária. Preserve compatibilidade com dados antigos e não substitua a arquitetura de persistência inteira.
 
-## Púlpito
+## Resultado esperado
 
-Preserve tipografia, hierarquia, cores de categoria, Para Ler/Já Lidos, marcação e desfazer. O modo focado deve reduzir chrome, não redesenhar os cards por estética.
+A tela de Histórico deve ter dois níveis claros:
 
-# Restrições gerais para P2
+1. lista de cultos/sessões anteriores;
+2. detalhe da sessão selecionada.
 
-- preservar offline-first;
-- não reescrever arquitetura inteira;
-- não trocar React/Vite/Capacitor/Firebase;
-- não adicionar UI library/state manager por conveniência;
-- não quebrar storage sem migração;
-- não transformar o app em dashboard genérico;
-- não degradar legibilidade do Púlpito;
-- executar e validar P2 por subfases, com commits revisáveis.
+Cada sessão deve expor, quando disponível:
+
+- data;
+- nome do culto;
+- dirigente;
+- quantidade de avisos;
+- estado/finalização.
+
+Ao abrir uma sessão:
+
+- métricas usam somente aquela sessão;
+- busca usa somente aquela sessão;
+- filtros usam somente aquela sessão;
+- relatório/exportação usa somente aquela sessão;
+- nenhum aviso de outro culto entra silenciosamente.
+
+Registros legados sem todos os metadados devem continuar acessíveis de forma segura; não invente metadados inexistentes.
+
+## Validação de P2B
+
+1. dois cultos diferentes aparecem separadamente;
+2. abrir culto A nunca mostra avisos do culto B;
+3. métricas correspondem ao culto selecionado;
+4. busca/filtros não atravessam sessões;
+5. relatório corresponde ao culto selecionado;
+6. culto recém-finalizado fica consultável;
+7. novo culto não apaga histórico anterior;
+8. registros antigos continuam acessíveis;
+9. ausência de metadado não gera dado fictício;
+10. recarga offline mantém o histórico.
+
+Executar `npm run lint` e `npm run build` novamente.
+
+# P2C — modo focado do Púlpito
+
+Arquivos prioritários:
+
+- `src/components/pulpito/PulpitoScreen.tsx`
+- `src/components/pulpito/AvisoCardPulpito.tsx`
+- `src/components/common/Header.tsx`
+- `src/components/common/BottomNav.tsx`
+- `src/context/AccessibilityContext.tsx`, somente se necessário
+
+## Contexto
+
+O Púlpito é uma das partes mais fortes do produto. Preserve sua identidade e leitura.
+
+Não redesenhe os cards por estética.
+
+## Resultado esperado
+
+Criar um modo de leitura mais focado, reduzindo chrome ao redor, mas preservando:
+
+- identificação/status do culto;
+- quantidade de pendentes;
+- controles de tamanho da fonte quando necessários;
+- `Para Ler` / `Já Lidos`;
+- cores de categoria;
+- cards atuais e sua hierarquia;
+- marcar como anunciado;
+- desfazer marcação quando permitido;
+- saída clara do modo focado.
+
+O modo focado não deve esconder informação operacional essencial nem prender o usuário sem saída evidente.
+
+Considere safe-area, viewport estreito e fonte ampliada.
+
+## Validação de P2C
+
+1. entrar/sair do modo focado é óbvio;
+2. cards continuam legíveis;
+3. pendentes e já lidos continuam distinguíveis;
+4. marcar/desfazer continua funcionando;
+5. bottom navigation/header não competem com leitura quando foco está ativo;
+6. usuário consegue retornar à navegação normal;
+7. viewport ~360 px não trunca conteúdo crítico;
+8. fonte aumentada não quebra layout.
+
+Executar lint/build.
+
+# P2D — refinamento visual, motion e acessibilidade
+
+Executar somente depois de P2A/P2B/P2C estabilizadas.
+
+Objetivos:
+
+- reduzir cards, badges e sombras quando não ajudam agrupamento;
+- evitar textos operacionais críticos em 9–10 px;
+- manter alvos touch próximos de 44 px;
+- adicionar ou respeitar `prefers-reduced-motion` onde houver animação relevante;
+- revisar estados vazio, loading, erro, offline e sucesso nas telas alteradas;
+- testar tema claro/escuro;
+- testar fonte aumentada;
+- testar teclado aberto nos formulários;
+- testar safe-area Android;
+- validar aproximadamente 360 px e viewport maior.
+
+Não transformar P2D em redesign total.
+
+# Questão operacional que pode surgir durante P2
+
+O Header permite ao administrador abrir `Iniciar Novo Culto` mesmo se já existir um culto em andamento. Isso não foi considerado blocker de P1.
+
+Se P2 tocar no ciclo de vida de cultos por causa do Histórico e essa situação se tornar material, **não invente uma política silenciosamente**. Verifique o comportamento atual e trate como decisão de produto: por exemplo, bloquear novo culto enquanto existe um em andamento ou exigir encerramento explícito.
+
+Não mude essa regra apenas como efeito colateral de P2B.
+
+# Regras de execução para Gemini 3.7 Flash
+
+1. Leia o estado real da branch antes de editar.
+2. Não trate este documento como substituto do código.
+3. Descubra usos reais de campos antes de removê-los.
+4. Mudança de schema exige compatibilidade consciente.
+5. Prefira mudanças pequenas e verificáveis.
+6. Não reabra P0/P1 sem regressão concreta reproduzida.
+7. Não introduza backend, framework, state manager ou UI library nova.
+8. Preserve React + TypeScript + Vite + Capacitor + Firebase opcional.
+9. Preserve offline-first.
+10. Não use dados fictícios para preencher ausência.
+11. Não use P2 para refatoração cosmética ampla.
+12. Faça commits separados por subfase suficientemente grande para revisão objetiva.
+13. Após cada subfase, atualize os checklists Gemini e Sonnet de forma sincronizada.
+
+# Critério de pronto da P2
+
+Considere P2 concluída somente quando:
+
+- formulários não fabricam informações ausentes;
+- datas relevantes são persistidas de modo absoluto e exibidas amigavelmente;
+- campos sem efeito foram tratados conscientemente;
+- pendentes podem ser corrigidos sem enfraquecer autorização;
+- Histórico lista e detalha cultos reais sem mistura entre sessões;
+- Púlpito possui modo focado sem perder legibilidade ou controle;
+- polish final melhora densidade/acessibilidade sem trocar identidade;
+- dados antigos continuam acessíveis;
+- offline-first permanece funcional;
+- P0 e P1 continuam estáveis;
+- `npm run lint` passa;
+- `npm run build` passa;
+- fluxos principais foram conferidos no render real em mobile estreito.
+
+Ao concluir cada subfase, informe arquivos alterados, comportamento antes/depois, migrações realizadas, validações executadas e SHA do commit.
