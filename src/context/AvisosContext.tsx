@@ -35,7 +35,7 @@ interface AvisosContextType {
 const AvisosContext = createContext<AvisosContextType | undefined>(undefined);
 
 export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser } = useAuth();
+  const { currentUser, isAdmin } = useAuth();
   const { cultoAtivo, isDirigente } = useCulto();
   const { soundEnabled } = useAccessibility();
   const [avisos, setAvisos] = useState<AvisoItem[]>(() => storageService.getAvisos());
@@ -57,10 +57,12 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return () => unsubscribe();
   }, [isDirigente, soundEnabled, currentUser?.id]);
 
-  const currentCultoId = cultoAtivo?.id || 'culto_demo_hoje';
+  const currentCultoId = cultoAtivo?.id ?? null;
   
   // Avisos da sessão ativa do culto em andamento
-  const avisosCultoAtual = avisos.filter((a) => a.cultoId === currentCultoId);
+  const avisosCultoAtual = currentCultoId
+    ? avisos.filter((a) => a.cultoId === currentCultoId)
+    : [];
   const avisosPendentes = avisosCultoAtual.filter((a) => a.status === 'pendente');
   const avisosAnunciados = avisosCultoAtual.filter((a) => a.status === 'anunciado');
 
@@ -69,7 +71,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     : [];
 
   const adicionarAviso = (params: AddAvisoParams) => {
-    if (!currentUser) return;
+    if (!currentUser || !currentCultoId) return;
 
     const novoAviso: AvisoItem = {
       id: `aviso_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -95,6 +97,8 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const marcarComoAnunciado = (id: string) => {
+    // Apenas o dirigente ou administrador pode marcar como anunciado
+    if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
       prev.map((item) =>
         item.id === id
@@ -110,6 +114,8 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   };
 
   const desmarcarComoAnunciado = (id: string) => {
+    // Apenas o dirigente ou administrador pode desmarcar
+    if (!isDirigente && !isAdmin) return;
     setAvisos((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, status: 'pendente', lidoEm: undefined } : item
@@ -117,6 +123,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     );
     storageService.updateAvisoStatus(id, 'pendente');
   };
+
 
   const excluirAviso = (id: string) => {
     setAvisos((prev) => prev.filter((item) => item.id !== id));

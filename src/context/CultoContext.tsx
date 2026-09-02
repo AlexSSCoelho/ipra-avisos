@@ -8,15 +8,15 @@ interface CultoContextType {
   isDirigente: boolean;
   dirigenteAtualNome: string;
   dirigenteAtualCargo: string;
-  iniciarNovoCulto: (nomeCulto: string, dirigente: Obreiro) => void;
+  iniciarNovoCulto: (nomeCulto: string, dirigente: Obreiro, horario?: string) => { success: boolean; message?: string };
   definirDirigente: (obreiro: Obreiro, adminPin?: string) => { success: boolean; message?: string };
-  finalizarCulto: () => void;
+  finalizarCulto: () => { success: boolean; message?: string };
 }
 
 const CultoContext = createContext<CultoContextType | undefined>(undefined);
 
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, verifyAdminPin } = useAuth();
+  const { currentUser, verifyAdminPin, isAdmin } = useAuth();
   const [cultoAtivo, setCultoAtivo] = useState<CultoAtivo | null>(() => storageService.getCultoAtivo());
 
   useEffect(() => {
@@ -34,12 +34,25 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const dirigenteAtualNome = cultoAtivo?.dirigenteNome || 'Nenhum dirigente definido';
   const dirigenteAtualCargo = cultoAtivo?.dirigenteCargo || '';
 
-  const iniciarNovoCulto = (nomeCulto: string, dirigente: Obreiro) => {
+  const iniciarNovoCulto = (
+    nomeCulto: string,
+    dirigente: Obreiro,
+    horario?: string
+  ): { success: boolean; message?: string } => {
+    if (!isAdmin) {
+      return { success: false, message: 'Apenas administradores podem iniciar um culto.' };
+    }
+
+    const horarioFinal =
+      horario && horario.trim()
+        ? horario.trim()
+        : new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
     const novoCulto: CultoAtivo = {
       id: `culto_${Date.now()}`,
       data: new Date().toISOString().split('T')[0],
       nomeCulto: nomeCulto || 'Culto de Celebração',
-      horarioInicio: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      horarioInicio: horarioFinal,
       dirigenteId: dirigente.id,
       dirigenteNome: dirigente.nome,
       dirigenteCargo: dirigente.cargo,
@@ -47,6 +60,7 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
     storageService.saveCultoAtivo(novoCulto);
     setCultoAtivo(novoCulto);
+    return { success: true };
   };
 
   const definirDirigente = (
@@ -61,7 +75,10 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return { success: true };
   };
 
-  const finalizarCulto = () => {
+  const finalizarCulto = (): { success: boolean; message?: string } => {
+    if (!isAdmin && !isDirigente) {
+      return { success: false, message: 'Apenas o dirigente ou administrador pode encerrar o culto.' };
+    }
     if (cultoAtivo) {
       const finalizado: CultoAtivo = {
         ...cultoAtivo,
@@ -70,6 +87,7 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       storageService.saveCultoAtivo(finalizado);
       setCultoAtivo(finalizado);
     }
+    return { success: true };
   };
 
   return (

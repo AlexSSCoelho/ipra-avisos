@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Obreiro } from '../types';
-import { storageService, DEFAULT_OBREIROS } from '../services/storageService';
+import { storageService } from '../services/storageService';
 
 interface AuthContextType {
   currentUser: Obreiro | null;
@@ -26,7 +26,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
     }
-    return DEFAULT_OBREIROS[0];
+    return null;
   });
 
   useEffect(() => {

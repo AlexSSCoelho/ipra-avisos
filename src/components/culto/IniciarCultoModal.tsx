@@ -36,14 +36,18 @@ export const IniciarCultoModal: React.FC<IniciarCultoModalProps> = ({
   );
   const [horario, setHorario] = useState(() => {
     const now = new Date();
-    return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   });
   const [showSuccess, setShowSuccess] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   if (!isOpen) return null;
 
   const handleIniciar = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
 
     const nomeFinal =
       nomeCultoPreset === 'Outro Culto'
@@ -54,7 +58,13 @@ export const IniciarCultoModal: React.FC<IniciarCultoModalProps> = ({
 
     if (!dirigente) return;
 
-    iniciarNovoCulto(nomeFinal, dirigente);
+    const resultado = iniciarNovoCulto(nomeFinal, dirigente, horario);
+
+    if (!resultado.success) {
+      setErrorMsg(resultado.message || 'Não foi possível iniciar o culto.');
+      return;
+    }
+
     setShowSuccess(true);
 
     setTimeout(() => {
@@ -63,6 +73,7 @@ export const IniciarCultoModal: React.FC<IniciarCultoModalProps> = ({
       if (onSuccess) onSuccess();
     }, 800);
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
@@ -177,16 +188,21 @@ export const IniciarCultoModal: React.FC<IniciarCultoModalProps> = ({
           <div>
             <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1 flex items-center gap-1">
               <Clock className="w-3.5 h-3.5 text-slate-500" />
-              <span>Horário Previsto de Início:</span>
+              <span>Horário de Início:</span>
             </label>
             <input
-              type="text"
+              type="time"
               value={horario}
               onChange={(e) => setHorario(e.target.value)}
-              placeholder="Ex: 19:30"
               className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-700 bg-slate-950 text-white focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition-all"
             />
           </div>
+
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-800 text-rose-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
+              <span>{errorMsg}</span>
+            </div>
+          )}
 
           {showSuccess && (
             <div className="p-3 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold flex items-center gap-2 animate-in fade-in">
@@ -194,6 +210,7 @@ export const IniciarCultoModal: React.FC<IniciarCultoModalProps> = ({
               <span>Novo culto aberto com sucesso!</span>
             </div>
           )}
+
 
           {/* Botões */}
           <div className="flex gap-2.5 pt-2 shrink-0">

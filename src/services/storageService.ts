@@ -25,164 +25,6 @@ export const STORAGE_KEYS = {
   CURRENT_USER: 'ipra_current_user_v1',
 };
 
-// Obreiros padrão iniciais da IPRA Auriflama
-export const DEFAULT_OBREIROS: Obreiro[] = [
-  {
-    id: 'pastor_titular',
-    nome: 'Pr. Carlos Eduardo',
-    cargo: 'pastor',
-    genero: 'homem',
-    isAdmin: true,
-    ativo: true,
-  },
-  {
-    id: 'presbitero_joao',
-    nome: 'Pb. João Batista',
-    cargo: 'presbitero',
-    genero: 'homem',
-    isAdmin: true,
-    ativo: true,
-  },
-  {
-    id: 'presbitero_marcos',
-    nome: 'Pb. Marcos Antônio',
-    cargo: 'presbitero',
-    genero: 'homem',
-    ativo: true,
-  },
-  {
-    id: 'diacono_andre',
-    nome: 'Dc. André Luiz',
-    cargo: 'diacono',
-    genero: 'homem',
-    ativo: true,
-  },
-  {
-    id: 'diacono_samuel',
-    nome: 'Dc. Samuel Oliveira',
-    cargo: 'diacono',
-    genero: 'homem',
-    ativo: true,
-  },
-  {
-    id: 'diaconisa_maria',
-    nome: 'Dca. Maria Aparecida',
-    cargo: 'diaconisa',
-    genero: 'mulher',
-    ativo: true,
-  },
-  {
-    id: 'diaconisa_ester',
-    nome: 'Dca. Ester Souza',
-    cargo: 'diaconisa',
-    genero: 'mulher',
-    ativo: true,
-  },
-  {
-    id: 'evangelista_lucas',
-    nome: 'Ev. Lucas Gabriel',
-    cargo: 'evangelista_h',
-    genero: 'homem',
-    ativo: true,
-  },
-  {
-    id: 'evangelista_ruth',
-    nome: 'Evª. Ruth Helena',
-    cargo: 'evangelista_m',
-    genero: 'mulher',
-    ativo: true,
-  },
-  {
-    id: 'missionaria_ana',
-    nome: 'Miss. Ana Paula',
-    cargo: 'missionaria',
-    genero: 'mulher',
-    ativo: true,
-  },
-];
-
-// Dados iniciais de demonstração
-export const INITIAL_CULTO: CultoAtivo = {
-  id: 'culto_demo_hoje',
-  data: new Date().toISOString().split('T')[0],
-  nomeCulto: 'Culto da Família & Celebração',
-  horarioInicio: '19:30',
-  dirigenteId: 'pastor_titular',
-  dirigenteNome: 'Pr. Carlos Eduardo',
-  dirigenteCargo: 'pastor',
-  status: 'em_andamento',
-};
-
-export const INITIAL_AVISOS: AvisoItem[] = [
-  {
-    id: 'aviso_demo_1',
-    cultoId: 'culto_demo_hoje',
-    tipo: 'visitante',
-    status: 'pendente',
-    criadoEm: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    autorId: 'diacono_andre',
-    autorNome: 'Dc. André Luiz',
-    autorCargo: 'diacono',
-    visitante: {
-      nome: 'Irmão Roberto e Família',
-      genero: 'casal',
-      cidade: 'Votuporanga - SP',
-      igreja: 'IPRA Central de Votuporanga',
-      acompanhante: 'Esposa Cláudia e 2 filhos',
-      observacao: 'Parentes da irmã Neusa',
-    },
-  },
-  {
-    id: 'aviso_demo_2',
-    cultoId: 'culto_demo_hoje',
-    tipo: 'oracao',
-    status: 'pendente',
-    criadoEm: new Date(Date.now() - 1000 * 60 * 10).toISOString(),
-    autorId: 'diaconisa_maria',
-    autorNome: 'Dca. Maria Aparecida',
-    autorCargo: 'diaconisa',
-    oracao: {
-      nomePessoa: 'Dona Francisca (Mãe do Ir. Paulo)',
-      categoria: 'saude',
-      motivo: 'Internada na Santa Casa para exames cardíacos. Pedem oração pela cura e restauração.',
-      urgente: true,
-    },
-  },
-  {
-    id: 'aviso_demo_3',
-    cultoId: 'culto_demo_hoje',
-    tipo: 'reuniao',
-    status: 'pendente',
-    criadoEm: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-    autorId: 'diacono_samuel',
-    autorNome: 'Dc. Samuel Oliveira',
-    autorCargo: 'diacono',
-    reuniao: {
-      grupo: 'oracao_casas',
-      dataTexto: 'Próxima Terça-feira (02/09)',
-      horario: '19h30',
-      local: 'Casa do Irmão José Bento - Rua Bahia, nº 450',
-      responsavel: 'Dirigente: Pb. Marcos',
-    },
-  },
-  {
-    id: 'aviso_demo_4',
-    cultoId: 'culto_demo_hoje',
-    tipo: 'geral',
-    status: 'pendente',
-    criadoEm: new Date(Date.now() - 1000 * 60 * 2).toISOString(),
-    autorId: 'presbitero_joao',
-    autorNome: 'Pb. João Batista',
-    autorCargo: 'presbitero',
-    geral: {
-      titulo: 'Santa Ceia do Senhor & Cantina da Mocidade',
-      descricao: 'No próximo domingo pela manhã teremos a Santa Ceia e após o culto à noite a Cantina dos Jovens em prol do Congresso.',
-      dataEvento: 'Próximo Domingo',
-      destinatario: 'Toda a Igreja',
-    },
-  },
-];
-
 class StorageService {
   private firestore: Firestore | null = null;
   private firebaseApp: FirebaseApp | null = null;
@@ -200,21 +42,11 @@ class StorageService {
   }
 
   private initLocalData() {
+    // Garante que as chaves existam mas NÃO inicializa com dados fictícios.
+    // Instalação nova começa em estado vazio; o administrador cadastra os dados reais.
     if (typeof window === 'undefined') return;
-
-    if (!localStorage.getItem(STORAGE_KEYS.OBREIROS)) {
-      localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(DEFAULT_OBREIROS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.CULTO_ATIVO)) {
-      localStorage.setItem(STORAGE_KEYS.CULTO_ATIVO, JSON.stringify(INITIAL_CULTO));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.AVISOS)) {
-      localStorage.setItem(STORAGE_KEYS.AVISOS, JSON.stringify(INITIAL_AVISOS));
-    }
-    if (!localStorage.getItem(STORAGE_KEYS.ADMIN_PIN)) {
-      localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, '1234');
-    }
   }
+
 
   private initFirebase() {
     try {
@@ -280,9 +112,9 @@ class StorageService {
   public getObreiros(): Obreiro[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.OBREIROS);
-      return raw ? JSON.parse(raw) : DEFAULT_OBREIROS;
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return DEFAULT_OBREIROS;
+      return [];
     }
   }
 
@@ -302,9 +134,9 @@ class StorageService {
   public getCultoAtivo(): CultoAtivo | null {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.CULTO_ATIVO);
-      return raw ? JSON.parse(raw) : INITIAL_CULTO;
+      return raw ? JSON.parse(raw) : null;
     } catch {
-      return INITIAL_CULTO;
+      return null;
     }
   }
 
@@ -351,11 +183,12 @@ class StorageService {
   public getAvisos(): AvisoItem[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.AVISOS);
-      return raw ? JSON.parse(raw) : INITIAL_AVISOS;
+      return raw ? JSON.parse(raw) : [];
     } catch {
-      return INITIAL_AVISOS;
+      return [];
     }
   }
+
 
   public saveAvisos(avisos: AvisoItem[]) {
     localStorage.setItem(STORAGE_KEYS.AVISOS, JSON.stringify(avisos));

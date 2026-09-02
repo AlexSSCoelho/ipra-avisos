@@ -8,18 +8,20 @@ import {
   X
 } from 'lucide-react';
 import { useAvisos } from '../../context/AvisosContext';
+import { useCulto } from '../../context/CultoContext';
 import { formatHora, getTipoAvisoLabel } from '../../utils/formatters';
 import type { TipoAviso } from '../../types';
 
 export const HistoricoScreen: React.FC = () => {
-  const { avisos } = useAvisos();
+  const { avisosCultoAtual, totalVisitantes, totalOracoes, totalReunioes, totalGerais } = useAvisos();
+  const { cultoAtivo } = useCulto();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTipo, setSelectedTipo] = useState<TipoAviso | 'todos'>('todos');
   const [copied, setCopied] = useState(false);
 
   const avisosFiltrados = useMemo(() => {
-    return avisos.filter((item) => {
+    return avisosCultoAtual.filter((item) => {
       if (selectedTipo !== 'todos' && item.tipo !== selectedTipo) {
         return false;
       }
@@ -49,22 +51,33 @@ export const HistoricoScreen: React.FC = () => {
 
       return true;
     });
-  }, [avisos, selectedTipo, searchTerm]);
+  }, [avisosCultoAtual, selectedTipo, searchTerm]);
 
   const stats = useMemo(() => {
-    const visitantes = avisos.filter((a) => a.tipo === 'visitante').length;
-    const oracoes = avisos.filter((a) => a.tipo === 'oracao').length;
-    const reunioes = avisos.filter((a) => a.tipo === 'reuniao').length;
-    const gerais = avisos.filter((a) => a.tipo === 'geral').length;
-    return { visitantes, oracoes, reunioes, gerais, total: avisos.length };
-  }, [avisos]);
+    return {
+      visitantes: totalVisitantes,
+      oracoes: totalOracoes,
+      reunioes: totalReunioes,
+      gerais: totalGerais,
+      total: avisosCultoAtual.length,
+    };
+  }, [totalVisitantes, totalOracoes, totalReunioes, totalGerais, avisosCultoAtual.length]);
+
+  // Formatar data do culto para exibição
+  const dataCultoFormatada = cultoAtivo?.data
+    ? new Date(cultoAtivo.data + 'T12:00:00').toLocaleDateString('pt-BR')
+    : new Date().toLocaleDateString('pt-BR');
 
   const handleCopiarRelatorio = async () => {
+    const nomeCulto = cultoAtivo?.nomeCulto || 'Culto';
+    const dirigente = cultoAtivo?.dirigenteNome || '';
     let relatorio = `📋 *RELATÓRIO DE AVISOS — IPRA AURIFLAMA*\n`;
-    relatorio += `📅 Data: ${new Date().toLocaleDateString('pt-BR')}\n`;
-    relatorio += `----------------------------------------\n\n`;
+    relatorio += `⛪ Culto: ${nomeCulto}\n`;
+    relatorio += `📅 Data: ${dataCultoFormatada}`;
+    if (dirigente) relatorio += ` • Dirigente: ${dirigente}`;
+    relatorio += `\n----------------------------------------\n\n`;
 
-    const visitantes = avisos.filter((a) => a.tipo === 'visitante');
+    const visitantes = avisosCultoAtual.filter((a) => a.tipo === 'visitante');
     if (visitantes.length > 0) {
       relatorio += `👤 *VISITANTES (${visitantes.length}):*\n`;
       visitantes.forEach((v, idx) => {
@@ -74,7 +87,7 @@ export const HistoricoScreen: React.FC = () => {
       relatorio += `\n`;
     }
 
-    const oracoes = avisos.filter((a) => a.tipo === 'oracao');
+    const oracoes = avisosCultoAtual.filter((a) => a.tipo === 'oracao');
     if (oracoes.length > 0) {
       relatorio += `🙏 *PEDIDOS DE ORAÇÃO (${oracoes.length}):*\n`;
       oracoes.forEach((o, idx) => {
@@ -83,7 +96,7 @@ export const HistoricoScreen: React.FC = () => {
       relatorio += `\n`;
     }
 
-    const reunioes = avisos.filter((a) => a.tipo === 'reuniao');
+    const reunioes = avisosCultoAtual.filter((a) => a.tipo === 'reuniao');
     if (reunioes.length > 0) {
       relatorio += `👥 *REUNIÕES & GRUPOS:*\n`;
       reunioes.forEach((r, idx) => {
@@ -92,7 +105,7 @@ export const HistoricoScreen: React.FC = () => {
       relatorio += `\n`;
     }
 
-    const gerais = avisos.filter((a) => a.tipo === 'geral');
+    const gerais = avisosCultoAtual.filter((a) => a.tipo === 'geral');
     if (gerais.length > 0) {
       relatorio += `📢 *COMUNICADOS GERAIS:*\n`;
       gerais.forEach((g, idx) => {
@@ -124,6 +137,7 @@ export const HistoricoScreen: React.FC = () => {
     }
   };
 
+
   return (
     <div className="w-full max-w-2xl mx-auto px-3 py-3 space-y-3 overflow-x-hidden">
       
@@ -133,17 +147,24 @@ export const HistoricoScreen: React.FC = () => {
           <div>
             <h2 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
               <Archive className="w-4 h-4 text-amber-400" />
-              <span>Arquivo Histórico de Registros</span>
+              <span>Registros do Culto</span>
             </h2>
-            <p className="text-[11px] text-zinc-400">
-              Guarda permanente dos comunicados da IPRA
-            </p>
+            {cultoAtivo ? (
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                {cultoAtivo.nomeCulto} · {dataCultoFormatada}
+              </p>
+            ) : (
+              <p className="text-[11px] text-zinc-500 mt-0.5 italic">
+                Nenhum culto ativo no momento
+              </p>
+            )}
           </div>
 
           <button
             type="button"
             onClick={handleCopiarRelatorio}
-            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+            disabled={avisosCultoAtual.length === 0}
+            className="w-full sm:w-auto px-3 py-2 rounded-xl bg-white hover:bg-slate-100 active:scale-95 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {copied ? (
               <>
@@ -153,11 +174,12 @@ export const HistoricoScreen: React.FC = () => {
             ) : (
               <>
                 <Share2 className="w-3.5 h-3.5" />
-                <span>Copiar para WhatsApp</span>
+                <span>Copiar relatório</span>
               </>
             )}
           </button>
         </div>
+
 
         {/* 4 Métricas Sóbrias e Compactas */}
         <div className="grid grid-cols-4 gap-2 pt-2 border-t border-zinc-850">

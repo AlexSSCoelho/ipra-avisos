@@ -30,9 +30,15 @@ const AppContent: React.FC = () => {
   const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Ignorar swipe apenas quando o usuário toca dentro de campos de digitação
     const target = e.target as HTMLElement | null;
-    if (target && target.closest('input[type="text"], input[type="password"], input[type="search"], textarea')) {
+
+    // Cancela swipe em qualquer controle interativo ou área marcada como no-swipe
+    if (
+      target &&
+      target.closest(
+        'input, textarea, select, button, a, [data-no-swipe="true"], .no-swipe'
+      )
+    ) {
       touchStartX.current = 0;
       touchStartY.current = 0;
       return;
@@ -55,11 +61,8 @@ const AppContent: React.FC = () => {
     touchStartX.current = 0;
     touchStartY.current = 0;
 
-    // Gesto de swipe horizontal sensível e universal em qualquer lugar da tela:
-    // - Mínimo 30px de deslocamento horizontal
-    // - Movimento predominantemente horizontal (deltaX > deltaY * 1.05)
-    // - Duração de até 750ms
-    if (Math.abs(deltaX) > 30 && Math.abs(deltaX) > Math.abs(deltaY) * 1.05 && duration < 750) {
+    // Swipe horizontal seguro: mínimo 60 px, predominância horizontal clara (1.5x), até 600ms
+    if (Math.abs(deltaX) > 60 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5 && duration < 600) {
       const currentIndex = activeTabs.indexOf(currentTab);
       if (currentIndex === -1) return;
 
@@ -80,6 +83,7 @@ const AppContent: React.FC = () => {
       }
     }
   };
+
 
   const activeTabIndex = Math.max(0, activeTabs.indexOf(currentTab));
 

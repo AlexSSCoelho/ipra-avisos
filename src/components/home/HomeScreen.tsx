@@ -29,14 +29,8 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 }) => {
   const { currentUser, isAdmin } = useAuth();
   const { cultoAtivo, isDirigente, dirigenteAtualNome, finalizarCulto } = useCulto();
-  const { avisos, totalPendentes } = useAvisos();
+  const { totalPendentes, totalVisitantes, totalOracoes, totalReunioes, totalGerais } = useAvisos();
   const [showEncerrarConfirm, setShowEncerrarConfirm] = useState(false);
-
-  // Contagem de métricas de hoje
-  const countVisitantes = avisos.filter(a => a.tipo === 'visitante').length;
-  const countOracoes = avisos.filter(a => a.tipo === 'oracao').length;
-  const countReunioes = avisos.filter(a => a.tipo === 'reuniao').length;
-  const countGerais = avisos.filter(a => a.tipo === 'geral').length;
 
   return (
     <div className="w-full max-w-2xl mx-auto px-3 py-3.5 space-y-4">
@@ -111,19 +105,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
           <div className="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800/80">
             <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-xl text-center">
               <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Visitantes</div>
-              <div className="text-xl font-black text-white mt-0.5">{countVisitantes}</div>
+              <div className="text-xl font-black text-white mt-0.5">{totalVisitantes}</div>
             </div>
             <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-xl text-center">
               <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">Orações</div>
-              <div className="text-xl font-black text-amber-300 mt-0.5">{countOracoes}</div>
+              <div className="text-xl font-black text-amber-300 mt-0.5">{totalOracoes}</div>
             </div>
             <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-xl text-center">
               <div className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Reuniões</div>
-              <div className="text-xl font-black text-teal-300 mt-0.5">{countReunioes}</div>
+              <div className="text-xl font-black text-teal-300 mt-0.5">{totalReunioes}</div>
             </div>
             <div className="bg-slate-950/70 border border-slate-800 p-2 rounded-xl text-center">
               <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">Gerais</div>
-              <div className="text-xl font-black text-blue-300 mt-0.5">{countGerais}</div>
+              <div className="text-xl font-black text-blue-300 mt-0.5">{totalGerais}</div>
             </div>
           </div>
 
@@ -153,42 +147,45 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </button>
           </div>
 
-          {/* Encerrar Culto */}
-          {!showEncerrarConfirm ? (
-            <button
-              type="button"
-              onClick={() => setShowEncerrarConfirm(true)}
-              className="w-full py-2 text-center text-xs text-slate-400 hover:text-rose-400 font-semibold transition-colors flex items-center justify-center gap-1.5"
-            >
-              <Flag className="w-3.5 h-3.5" />
-              <span>Concluir sessão deste culto</span>
-            </button>
-          ) : (
-            <div className="bg-rose-950/60 border border-rose-800 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in">
-              <div className="text-xs text-rose-200 font-bold text-center">
-                Deseja realmente encerrar a transmissão deste culto?
+          {/* Encerrar Culto — apenas dirigente ou administrador */}
+          {(isAdmin || isDirigente) && (
+            !showEncerrarConfirm ? (
+              <button
+                type="button"
+                onClick={() => setShowEncerrarConfirm(true)}
+                className="w-full py-2 text-center text-xs text-slate-400 hover:text-rose-400 font-semibold transition-colors flex items-center justify-center gap-1.5"
+              >
+                <Flag className="w-3.5 h-3.5" />
+                <span>Concluir sessão deste culto</span>
+              </button>
+            ) : (
+              <div className="bg-rose-950/60 border border-rose-800 rounded-2xl p-3.5 space-y-2.5 animate-in fade-in">
+                <div className="text-xs text-rose-200 font-bold text-center">
+                  Deseja realmente encerrar a transmissão deste culto?
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEncerrarConfirm(false)}
+                    className="flex-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-xs font-bold"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      finalizarCulto();
+                      setShowEncerrarConfirm(false);
+                    }}
+                    className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md shadow-rose-600/20"
+                  >
+                    Confirmar Encerramento
+                  </button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEncerrarConfirm(false)}
-                  className="flex-1 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-300 text-xs font-bold"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    finalizarCulto();
-                    setShowEncerrarConfirm(false);
-                  }}
-                  className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-black shadow-md shadow-rose-600/20"
-                >
-                  Confirmar Encerramento
-                </button>
-              </div>
-            </div>
+            )
           )}
+
         </div>
       ) : (
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-6 text-white shadow-lg text-center space-y-4">
