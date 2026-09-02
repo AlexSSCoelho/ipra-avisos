@@ -14,6 +14,9 @@ interface AccessibilityContextType {
   resetFontSize: () => void;
   isPulpitMode: boolean;
   setIsPulpitMode: (val: boolean) => void;
+  modoFocadoPulpito: boolean;
+  setModoFocadoPulpito: (val: boolean) => void;
+  toggleModoFocadoPulpito: () => void;
   soundEnabled: boolean;
   setSoundEnabled: (val: boolean) => void;
   isInstalled: boolean;
@@ -32,6 +35,11 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [isPulpitMode, setIsPulpitMode] = useState<boolean>(false);
+  const [modoFocadoPulpito, setModoFocadoPulpito] = useState<boolean>(false);
+
+  const toggleModoFocadoPulpito = useCallback(() => {
+    setModoFocadoPulpito((prev) => !prev);
+  }, []);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState<boolean>(() => {
@@ -125,6 +133,9 @@ export const AccessibilityProvider: React.FC<{ children: React.ReactNode }> = ({
         resetFontSize,
         isPulpitMode,
         setIsPulpitMode,
+        modoFocadoPulpito,
+        setModoFocadoPulpito,
+        toggleModoFocadoPulpito,
         soundEnabled,
         setSoundEnabled,
         isInstalled,

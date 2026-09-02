@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AccessibilityProvider, useAccessibility } from './context/AccessibilityContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CultoProvider } from './context/CultoContext';
@@ -15,11 +15,31 @@ import { SettingsModal } from './components/configuracoes/SettingsModal';
 
 const AppContent: React.FC = () => {
   const { currentUser } = useAuth();
-  const { isPulpitMode } = useAccessibility();
+  const { isPulpitMode, modoFocadoPulpito, setModoFocadoPulpito } = useAccessibility();
   const { totalPendentes } = useAvisos();
   const [currentTab, setCurrentTab] = useState<AppTabType>('home');
   const [isIniciarCultoModalOpen, setIsIniciarCultoModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  const isImersivo = currentTab === 'pulpito' && modoFocadoPulpito;
+
+  // Fecha o modo focado com a tecla Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isImersivo) {
+        setModoFocadoPulpito(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isImersivo, setModoFocadoPulpito]);
+
+  // Se o usuário trocar de aba, encerra o modo focado do púlpito
+  useEffect(() => {
+    if (currentTab !== 'pulpito' && modoFocadoPulpito) {
+      setModoFocadoPulpito(false);
+    }
+  }, [currentTab, modoFocadoPulpito, setModoFocadoPulpito]);
 
   // 4 Abas fixas, previsíveis e universais
   const activeTabs: AppTabType[] = ['home', 'diacono', 'pulpito', 'historico'];
@@ -30,6 +50,9 @@ const AppContent: React.FC = () => {
   const touchStartTime = useRef<number>(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
+    // No modo imersivo do púlpito, bloqueia troca acidental de abas por swipe
+    if (isImersivo) return;
+
     const target = e.target as HTMLElement | null;
 
     // Cancela swipe em qualquer controle interativo ou área marcada como no-swipe
@@ -111,12 +134,14 @@ const AppContent: React.FC = () => {
         isPulpitMode ? 'bg-black text-white' : 'bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-white'
       }`}
     >
-      {/* Header Compacto com Status, Identidade e Acessibilidade */}
-      <Header
-        onNavigateHome={() => setCurrentTab('home')}
-        onOpenIniciarCultoModal={() => setIsIniciarCultoModalOpen(true)}
-        onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
-      />
+      {/* Header Compacto com Status, Identidade e Acessibilidade (oculto no modo focado do púlpito) */}
+      {!isImersivo && (
+        <Header
+          onNavigateHome={() => setCurrentTab('home')}
+          onOpenIniciarCultoModal={() => setIsIniciarCultoModalOpen(true)}
+          onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
+        />
+      )}
 
       {/* Conteúdo Principal em Carrossel Deslizante Fluido e Isolado */}
       <main className="flex-1 w-full overflow-hidden flex flex-col relative">
@@ -139,8 +164,8 @@ const AppContent: React.FC = () => {
             <DiaconoDashboard />
           </div>
 
-          {/* Aba 2: Púlpito */}
-          <div className="w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 pb-20">
+          {/* Aba 2: Púlpito (maximiza área útil no modo focado) */}
+          <div className={`w-full h-full shrink-0 min-w-full overflow-y-auto overscroll-y-contain px-0 ${isImersivo ? 'pb-4' : 'pb-20'}`}>
             <PulpitoScreen />
           </div>
 
@@ -151,13 +176,15 @@ const AppContent: React.FC = () => {
         </div>
       </main>
 
-      {/* Navegação Inferior Mobile-First */}
-      <BottomNav
-        currentTab={currentTab}
-        setCurrentTab={setCurrentTab}
-        totalPendentes={totalPendentes}
-        isPulpitMode={isPulpitMode}
-      />
+      {/* Navegação Inferior Mobile-First (oculta no modo focado do púlpito) */}
+      {!isImersivo && (
+        <BottomNav
+          currentTab={currentTab}
+          setCurrentTab={setCurrentTab}
+          totalPendentes={totalPendentes}
+          isPulpitMode={isPulpitMode}
+        />
+      )}
 
       {/* Modal de Configurações e Perfil do Usuário */}
       <SettingsModal
