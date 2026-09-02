@@ -103,17 +103,25 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const finalizarCulto = (): { success: boolean; message?: string } => {
-    if (!isAdmin && !isDirigente) {
-      return { success: false, message: 'Apenas o dirigente ou administrador pode encerrar o culto.' };
+    const cultoAtual = cultoAtivo || storageService.getCultoAtivo();
+    if (!cultoAtual || cultoAtual.status !== 'em_andamento') {
+      return { success: false, message: 'Não há culto em andamento para ser encerrado.' };
     }
-    if (cultoAtivo) {
-      const finalizado: CultoAtivo = {
-        ...cultoAtivo,
-        status: 'finalizado',
-      };
-      storageService.saveCultoAtivo(finalizado);
-      setCultoAtivo(finalizado);
+
+    const isDirigenteDoCulto = Boolean(
+      currentUser && currentUser.id === cultoAtual.dirigenteId
+    );
+
+    if (!isAdmin && !isDirigenteDoCulto) {
+      return { success: false, message: 'Apenas o dirigente do culto ou administrador pode encerrar o culto.' };
     }
+
+    const finalizado: CultoAtivo = {
+      ...cultoAtual,
+      status: 'finalizado',
+    };
+    storageService.saveCultoAtivo(finalizado);
+    setCultoAtivo(finalizado);
     return { success: true };
   };
 

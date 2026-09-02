@@ -14,7 +14,8 @@ import {
   Plus, 
   UserCheck, 
   SlidersHorizontal,
-  Package
+  Package,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCulto } from '../../context/CultoContext';
@@ -29,7 +30,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, logout, obreiros, addObreiro, updateAdminPin, isAdmin } = useAuth();
+  const { currentUser, logout, obreiros, addObreiro, updateAdminPin, configureMigrationPin, hasPinConfigured, isAdmin } = useAuth();
   const { cultoAtivo, dirigenteAtualNome, definirDirigente } = useCulto();
   const { 
     isPulpitMode, 
@@ -57,9 +58,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [genero, setGenero] = useState<'homem' | 'mulher'>('homem');
   const [isNovoAdmin, setIsNovoAdmin] = useState(false);
 
-  // Alterar PIN
+  // Alterar PIN / Configurar PIN inicial
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
   const [pinSuccess, setPinSuccess] = useState('');
   const [pinError, setPinError] = useState('');
 
@@ -100,12 +102,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     setShowAddObreiro(false);
   };
 
+  const handleConfigureInitialPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPinError('');
+    setPinSuccess('');
+    if (!newPin || newPin.trim().length < 4) {
+      setPinError('O PIN administrativo deve ter pelo menos 4 dígitos.');
+      return;
+    }
+    if (newPin !== confirmPin) {
+      setPinError('Os PINs digitados não coincidem.');
+      return;
+    }
+    const res = configureMigrationPin(newPin);
+    if (res.success) {
+      setPinSuccess('PIN administrativo configurado com sucesso.');
+      setNewPin('');
+      setConfirmPin('');
+      setTimeout(() => setPinSuccess(''), 3000);
+    } else {
+      setPinError(res.message || 'Não foi possível configurar o PIN.');
+    }
+  };
+
   const handleUpdatePin = (e: React.FormEvent) => {
     e.preventDefault();
     setPinError('');
     setPinSuccess('');
     if (!currentPin || !newPin) {
       setPinError('Preencha os campos.');
+      return;
+    }
+    if (newPin.trim().length < 4) {
+      setPinError('A nova senha deve ter pelo menos 4 dígitos.');
       return;
     }
     if (updateAdminPin(currentPin, newPin)) {
@@ -515,61 +544,120 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           {/* TAB 4: SEGURANÇA / SENHA */}
           {activeTab === 'seguranca' && isAdmin && (
-            <form onSubmit={handleUpdatePin} className="space-y-3">
-              <div>
-                <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                  Alterar Senha Master
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  Código de 4 dígitos para autorizações no púlpito.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Senha Atual:</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  required
-                  value={currentPin}
-                  onChange={(e) => setCurrentPin(e.target.value)}
-                  placeholder="Senha atual"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Nova Senha:</label>
-                <input
-                  type="password"
-                  inputMode="numeric"
-                  required
-                  value={newPin}
-                  onChange={(e) => setNewPin(e.target.value)}
-                  placeholder="Nova senha de 4 dígitos"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
-                />
-              </div>
-
-              {pinError && (
-                <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
-                  {pinError}
+            !hasPinConfigured ? (
+              <form onSubmit={handleConfigureInitialPin} className="space-y-3">
+                <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
+                  <div className="font-bold flex items-center gap-1.5 mb-1">
+                    <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>Configuração do Primeiro PIN Master</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    Esta instalação ainda não possui um PIN administrativo configurado. Como administrador, defina agora o PIN master de segurança do sistema.
+                  </p>
                 </div>
-              )}
 
-              {pinSuccess && (
-                <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
-                  {pinSuccess}
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Novo PIN Master:</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    placeholder="Mínimo 4 dígitos"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
+                  />
                 </div>
-              )}
 
-              <button
-                type="submit"
-                className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all"
-              >
-                Salvar Nova Senha
-              </button>
-            </form>
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Confirmar Novo PIN:</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    value={confirmPin}
+                    onChange={(e) => setConfirmPin(e.target.value)}
+                    placeholder="Repita o PIN"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                {pinError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                    {pinError}
+                  </div>
+                )}
+
+                {pinSuccess && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                    {pinSuccess}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all"
+                >
+                  Gravar PIN Master
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handleUpdatePin} className="space-y-3">
+                <div>
+                  <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
+                    Alterar Senha Master
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Código de 4 dígitos para autorizações no púlpito.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Senha Atual:</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    value={currentPin}
+                    onChange={(e) => setCurrentPin(e.target.value)}
+                    placeholder="Senha atual"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Nova Senha:</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    required
+                    value={newPin}
+                    onChange={(e) => setNewPin(e.target.value)}
+                    placeholder="Nova senha de 4 dígitos"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
+                  />
+                </div>
+
+                {pinError && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                    {pinError}
+                  </div>
+                )}
+
+                {pinSuccess && (
+                  <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                    {pinSuccess}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all"
+                >
+                  Salvar Nova Senha
+                </button>
+              </form>
+            )
           )}
 
           {/* TAB 5: NUVEM FIREBASE */}

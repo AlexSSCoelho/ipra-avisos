@@ -18,7 +18,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
-  const { obreiros, login, addObreiro, isBootstrap, setInitialPin } = useAuth();
+  const { obreiros, login, isBootstrap, bootstrapInitialAdmin } = useAuth();
   const { cultoAtivo, definirDirigente } = useCulto();
   const { fontScale, increaseFontSize, decreaseFontSize, resetFontSize } = useAccessibility();
 
@@ -62,16 +62,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
       return;
     }
 
-    // Criar primeiro admin (bypass de verificação, pois estamos em bootstrap)
-    const result = addObreiro(
+    const result = bootstrapInitialAdmin(
       {
         nome: bootstrapNome.trim(),
         cargo: bootstrapCargo,
         genero: bootstrapGenero,
-        isAdmin: true,
-        ativo: true,
       },
-      true // bypassAdminCheck no bootstrap
+      bootstrapPin
     );
 
     if (!result.success) {
@@ -79,31 +76,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
       return;
     }
 
-    const pinOk = setInitialPin(bootstrapPin);
-    if (!pinOk) {
-      setBootstrapError('Não foi possível definir o PIN.');
-      return;
-    }
-
-    // Encontrar o obreiro recém-criado (último da lista que virá via listener)
-    // Fazemos login diretamente passando os dados
-    const novoAdmin: Obreiro = {
-      id: '', // será atualizado pelo listener; aguardamos o reload
-      nome: bootstrapNome.trim(),
-      cargo: bootstrapCargo,
-      genero: bootstrapGenero,
-      isAdmin: true,
-      ativo: true,
-    };
-    // Força reload para que o listener atualize obreiros e possamos logar
-    window.location.reload();
-    // (o usuário verá a tela de login normal com seu nome já na lista)
-    void novoAdmin;
+    onSuccess(false);
   };
 
   // ──────────────────────────────────────────────
   // FLUXO NORMAL DE IDENTIFICAÇÃO
   // ──────────────────────────────────────────────
+  const isSelectedAlreadyDirigente = Boolean(
+    selectedObreiro &&
+      cultoAtivo &&
+      cultoAtivo.status === 'em_andamento' &&
+      cultoAtivo.dirigenteId === selectedObreiro.id
+  );
+
   const handleEntrar = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -112,15 +97,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
       return;
     }
 
+    const isAlreadyDirigente = Boolean(
+      cultoAtivo &&
+        cultoAtivo.status === 'em_andamento' &&
+        cultoAtivo.dirigenteId === selectedObreiro.id
+    );
+
     if (isDirigindoCulto) {
-      // Se o PIN não foi fornecido, a chamada ao definirDirigente com PIN vazio
-      // será rejeitada no contexto, mas emitimos mensagem clara aqui primeiro
-      if (!pin || pin.trim().length === 0) {
-        setErrorMsg('Informe a senha administrativa para assumir a direção do culto.');
-        return;
+      if (!isAlreadyDirigente) {
+        if (!pin || pin.trim().length === 0) {
+          setErrorMsg('Informe a senha administrativa para assumir a direção do culto.');
+          return;
+        }
       }
-      // Se o usuário já é o dirigente atual, a chamada também funciona
-      const result = definirDirigente(selectedObreiro, pin);
+
+      const result = definirDirigente(selectedObreiro, pin || undefined);
       if (!result.success) {
         setErrorMsg(result.message || 'Senha incorreta para assumir a direção do culto.');
         return;
@@ -128,7 +119,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
     }
 
     login(selectedObreiro);
-    onSuccess(isDirigindoCulto || cultoAtivo?.dirigenteId === selectedObreiro.id);
+    onSuccess(isDirigindoCulto || isAlreadyDirigente);
   };
 
   return (
@@ -397,20 +388,29 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
 
               {isDirigindoCulto && (
                 <div className="pt-2.5 border-t border-slate-800 animate-in fade-in zoom-in-95 duration-150">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                    Senha de Liberação:
-                  </label>
-                  <div className="relative">
-                    <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      placeholder="Senha administrativa"
-                      className="w-full pl-8.5 pr-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
-                    />
-                  </div>
+                  {isSelectedAlreadyDirigente ? (
+                    <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>Você já está registrado como dirigente deste culto em andamento. Nenhuma senha adicional é necessária.</span>
+                    </div>
+                  ) : (
+                    <>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Senha de Liberação:
+                      </label>
+                      <div className="relative">
+                        <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          value={pin}
+                          onChange={(e) => setPin(e.target.value)}
+                          placeholder="Senha administrativa"
+                          className="w-full pl-8.5 pr-3 py-2 text-xs rounded-xl border border-slate-700 bg-slate-900 text-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
