@@ -132,7 +132,7 @@ export const AdminPassModal: React.FC<AdminPassModalProps> = ({
           {!isAdmin && (
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                Senha de Autorização:
+                Senha Administrativa:
               </label>
               <div className="relative">
                 <KeyRound className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />

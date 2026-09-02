@@ -106,8 +106,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     e.preventDefault();
     setPinError('');
     setPinSuccess('');
-    if (!newPin || newPin.trim().length < 4) {
-      setPinError('O PIN administrativo deve ter pelo menos 4 dígitos.');
+    if (!newPin || !/^\d{4,}$/.test(newPin.trim())) {
+      setPinError('O PIN administrativo deve conter apenas números e pelo menos 4 dígitos.');
       return;
     }
     if (newPin !== confirmPin) {
@@ -133,8 +133,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
       setPinError('Preencha os campos.');
       return;
     }
-    if (newPin.trim().length < 4) {
-      setPinError('A nova senha deve ter pelo menos 4 dígitos.');
+    if (!newPin || !/^\d{4,}$/.test(newPin.trim())) {
+      setPinError('A nova senha deve conter apenas números e pelo menos 4 dígitos.');
       return;
     }
     if (updateAdminPin(currentPin, newPin)) {
@@ -533,7 +533,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     </div>
                     {ob.isAdmin && (
                       <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
-                        MASTER
+                        ADMIN
                       </span>
                     )}
                   </div>
@@ -549,22 +549,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs">
                   <div className="font-bold flex items-center gap-1.5 mb-1">
                     <KeyRound className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                    <span>Configuração do Primeiro PIN Master</span>
+                    <span>Configuração do Primeiro PIN Administrativo</span>
                   </div>
                   <p className="leading-relaxed">
-                    Esta instalação ainda não possui um PIN administrativo configurado. Como administrador, defina agora o PIN master de segurança do sistema.
+                    Esta instalação ainda não possui um PIN administrativo configurado. Como administrador, defina agora o PIN administrativo de segurança do sistema.
                   </p>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Novo PIN Master:</label>
+                  <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Novo PIN Administrativo:</label>
                   <input
                     type="password"
                     inputMode="numeric"
                     required
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value)}
-                    placeholder="Mínimo 4 dígitos"
+                    placeholder="Mínimo 4 dígitos numéricos"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
                   />
                 </div>
@@ -598,14 +598,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   type="submit"
                   className="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all"
                 >
-                  Gravar PIN Master
+                  Gravar PIN Administrativo
                 </button>
               </form>
             ) : (
               <form onSubmit={handleUpdatePin} className="space-y-3">
                 <div>
                   <h3 className="font-extrabold text-sm text-slate-900 dark:text-white">
-                    Alterar Senha Master
+                    Alterar Senha Administrativa
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                     Código de 4 dígitos para autorizações no púlpito.
@@ -633,7 +633,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     required
                     value={newPin}
                     onChange={(e) => setNewPin(e.target.value)}
-                    placeholder="Nova senha de 4 dígitos"
+                    placeholder="Nova senha de 4 dígitos numéricos"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white"
                   />
                 </div>

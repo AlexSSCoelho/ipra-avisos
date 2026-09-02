@@ -64,18 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
-  // Migração pontual: se o obreiro logado tem cargo 'pastor' ou 'admin' mas
-  // isAdmin não está explicitamente marcado, garantir que seja preservado.
-  // Apenas para instalações existentes (obreiros já salvos sem isAdmin explícito).
+  // Migração pontual: se o obreiro tem cargo 'pastor' ou 'admin' mas
+  // isAdmin está ausente (undefined), garantir que seja preservado como admin.
+  // Registros com isAdmin: false explícito NÃO são alterados.
   useEffect(() => {
     if (obreiros.length === 0) return;
     let currentList = obreiros;
     const needsMigration = obreiros.some(
-      (o) => !o.isAdmin && (o.cargo === 'pastor' || o.cargo === 'admin')
+      (o) => o.isAdmin === undefined && (o.cargo === 'pastor' || o.cargo === 'admin')
     );
     if (needsMigration) {
       const migrated = obreiros.map((o) =>
-        !o.isAdmin && (o.cargo === 'pastor' || o.cargo === 'admin')
+        o.isAdmin === undefined && (o.cargo === 'pastor' || o.cargo === 'admin')
           ? { ...o, isAdmin: true }
           : o
       );
@@ -123,7 +123,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const updateAdminPin = (oldPin: string, newPin: string): boolean => {
     if (!verifyAdminPin(oldPin)) return false;
-    if (!newPin || newPin.trim().length < 4) return false;
+    if (!newPin || !/^\d{4,}$/.test(newPin.trim())) return false;
     storageService.setAdminPin(newPin.trim());
     return true;
   };
@@ -143,10 +143,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!adminData.nome || adminData.nome.trim().length === 0) {
       return { success: false, message: 'O nome do administrador é obrigatório.' };
     }
-    if (!pin || pin.trim().length < 4) {
+    if (!pin || !/^\d{4,}$/.test(pin.trim())) {
       return {
         success: false,
-        message: 'O PIN administrativo deve conter pelo menos 4 dígitos.',
+        message: 'O PIN administrativo deve conter apenas números e pelo menos 4 dígitos.',
       };
     }
 
@@ -183,10 +183,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         message: 'Apenas administradores podem configurar o primeiro PIN administrativo.',
       };
     }
-    if (!pin || pin.trim().length < 4) {
+    if (!pin || !/^\d{4,}$/.test(pin.trim())) {
       return {
         success: false,
-        message: 'O PIN deve conter pelo menos 4 dígitos.',
+        message: 'O PIN administrativo deve conter apenas números e pelo menos 4 dígitos.',
       };
     }
 

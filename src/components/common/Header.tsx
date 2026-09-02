@@ -74,7 +74,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
               {isAdmin && (
                 <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30 uppercase tracking-wide">
-                  Master
+                  Admin
                 </span>
               )}
             </div>
@@ -157,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
                       )}
                       {isAdmin && (
                         <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 uppercase">
-                          Master
+                          Admin
                         </span>
                       )}
                     </div>

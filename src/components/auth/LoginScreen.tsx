@@ -53,8 +53,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onSuccess }) => {
   const handleBootstrapConcluir = (e: React.FormEvent) => {
     e.preventDefault();
     setBootstrapError('');
-    if (!bootstrapPin || bootstrapPin.trim().length < 4) {
-      setBootstrapError('O PIN deve ter pelo menos 4 dígitos.');
+    if (!bootstrapPin || !/^\d{4,}$/.test(bootstrapPin.trim())) {
+      setBootstrapError('O PIN deve conter apenas números (mínimo 4 dígitos).');
       return;
     }
     if (bootstrapPin !== bootstrapPinConfirm) {

@@ -46,7 +46,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               <span>{getCargoLabel(currentUser?.cargo || 'diacono')}</span>
               {isAdmin && (
                 <span className="px-1.5 py-0.2 rounded text-[9px] bg-slate-900 dark:bg-slate-800 text-amber-300 font-bold border border-slate-700">
-                  MASTER
+                  ADMIN
                 </span>
               )}
             </div>
