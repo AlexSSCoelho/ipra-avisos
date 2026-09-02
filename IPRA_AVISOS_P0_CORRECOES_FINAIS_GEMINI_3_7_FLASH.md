@@ -1,158 +1,146 @@
-# IPRA Avisos — correções finais do P0 para Gemini 3.7 Flash no Antigravity
+# IPRA Avisos — microcorreções finais do P0 para Gemini 3.7 Flash no Antigravity
 
 # Objetivo
 
-Concluir exclusivamente os gaps restantes do P0 do IPRA Avisos a partir do estado atual da branch `implementacao-fases`, cujo HEAD revisado é o commit `45a249e9e29d0d0fcccc9c664c4e530d0ac287e7`.
+Aplicar exclusivamente três microcorreções finais no P0 já implementado da branch `implementacao-fases`, cujo estado revisado atual é o commit `8da1b386794208297e00b81fad92f614b572b494`.
 
-O executor desta especificação é **Gemini 3.7 Flash no Google Antigravity**. Não refaça o P0 já implementado e não avance para P1/P2. Preserve as correções corretas feitas anteriormente pelo Sonnet e altere somente o necessário para fechar os problemas abaixo.
+O executor desta especificação é **Gemini 3.7 Flash no Google Antigravity**.
+
+Não refaça o P0, não avance para P1/P2 e não altere arquitetura, navegação, Home, formulários, Histórico ou Púlpito. O commit `8da1b386794208297e00b81fad92f614b572b494` fechou corretamente os gaps anteriores de autorização, bootstrap, migração de PIN, encerramento de culto e sincronização de `currentUser`. Preserve esse comportamento.
 
 # Contexto relevante
 
-O projeto é `AlexSSCoelho/ipra-avisos`, React + TypeScript + Vite, com Capacitor para Android, `localStorage`/`BroadcastChannel` e sincronização opcional com Firestore. O fluxo operacional central é: recepção/diaconia registra aviso → aviso chega ao Púlpito → dirigente anuncia → status é registrado.
+O app é `AlexSSCoelho/ipra-avisos`, React + TypeScript + Vite, com Capacitor, `localStorage`/`BroadcastChannel` e Firestore opcional.
 
-A auditoria inicial identificou problemas de dados demo, autorização, escopo de culto, swipe, horário, histórico e métricas. O commit `793317dfaaf1cf2559f104409ca61970595108a7` corrigiu a maior parte do P0. O commit `45a249e9e29d0d0fcccc9c664c4e530d0ac287e7`, na branch `implementacao-fases`, corrigiu a segunda rodada: removeu o PIN padrão 1234, criou bootstrap inicial, tornou `isAdmin` explícito, impediu `setDirigenteDoCulto()` de criar culto, protegeu exclusão de avisos e endureceu a troca de dirigente.
+O P0 já está funcional. A revisão final encontrou apenas três pontos pequenos:
 
-A revisão do estado final dessa branch encontrou somente os gaps abaixo. Trate-os como o escopo completo desta tarefa.
+1. a migração de `isAdmin` ainda confunde propriedade ausente com `isAdmin: false`;
+2. alguns textos voltaram a usar “Master” para o PIN administrativo;
+3. o PIN é descrito como numérico/dígitos, mas hoje a validação exige apenas comprimento mínimo.
 
 Arquivos prioritários:
 
-- `src/components/auth/LoginScreen.tsx`
 - `src/context/AuthContext.tsx`
-- `src/context/CultoContext.tsx`
-- `src/services/storageService.ts`
 - `src/components/configuracoes/SettingsModal.tsx`
-- qualquer chamador direto dos contratos alterados, somente se necessário para manter consistência
+- `src/components/auth/AdminPassModal.tsx`
+- qualquer outro arquivo que contenha os mesmos textos ou validações de PIN, somente se necessário para consistência
 
-Antes de editar, leia o estado real desses arquivos na branch. Não assuma assinaturas apenas com base neste documento.
+Antes de editar, confirme o estado real desses arquivos no HEAD da branch.
 
-# Estado do P0 antes desta tarefa
+# Estado já concluído e que não deve ser alterado
 
-## Concluído e não deve ser desfeito
-
-- [x] dados fictícios de produção removidos;
-- [x] instalação nova não autoidentifica primeiro obreiro;
-- [x] métricas da Home usam o culto atual;
-- [x] horário escolhido para novo culto é persistido;
-- [x] swipe global respeita controles e áreas `no-swipe` e está menos sensível;
-- [x] relatório não mistura avisos globais com a data atual;
+- [x] dados demo removidos;
+- [x] bootstrap inicial explícito;
+- [x] `isAdmin` é privilégio explícito para novos registros;
+- [x] `bootstrapInitialAdmin()` substituiu bypass público;
+- [x] dirigente atual entra sem redigitar PIN;
+- [x] troca real de dirigente continua protegida;
+- [x] instalação existente sem PIN possui fluxo de migração;
+- [x] `finalizarCulto()` falha corretamente sem culto em andamento;
+- [x] `currentUser` é sincronizado após migração;
+- [x] fallback `1234` foi removido;
 - [x] `setDirigenteDoCulto()` não cria culto;
-- [x] fallback e textos de PIN padrão `1234` removidos;
-- [x] bootstrap inicial explícito para primeiro administrador + PIN;
-- [x] `isAdmin` passou a depender de privilégio explícito;
-- [x] cadastro normal de obreiros é administrativo na UI;
-- [x] autor/dirigente/admin têm regras de cancelamento de aviso pendente;
-- [x] aviso anunciado não pode ser apagado pelo fluxo comum;
-- [x] lint e build passaram no commit anterior.
+- [x] regras de cancelamento/exclusão de aviso continuam protegidas.
 
-## Ainda pendente
+# Correções obrigatórias
 
-- [ ] dirigente já definido deve conseguir se identificar sem ser bloqueado pela UI por ausência de PIN;
-- [ ] remover o bypass público `bypassAdminCheck` de `addObreiro()`;
-- [ ] permitir configuração segura do primeiro PIN em instalações existentes que já têm administrador, mas dependiam do antigo fallback 1234;
-- [ ] restringir `setInitialPin()`/criação inicial de PIN ao estado de bootstrap ou migração permitido;
-- [ ] `finalizarCulto()` deve retornar falha quando não existe culto em andamento;
-- [ ] sincronizar `currentUser` com a versão migrada de seu registro quando a migração de `isAdmin` alterar o obreiro persistido.
+## 1. Migrar para admin somente quando `isAdmin` estiver ausente
+
+A migração de compatibilidade atual usa condição equivalente a:
+
+```ts
+!o.isAdmin && (o.cargo === 'pastor' || o.cargo === 'admin')
+```
+
+Isso trata estes dois estados como iguais:
+
+```ts
+isAdmin === undefined
+isAdmin === false
+```
+
+Consequência: um Pastor/Admin que tenha sido explicitamente configurado como `isAdmin: false` pode voltar a receber administração ao executar a migração.
+
+### Resultado esperado
+
+A migração de compatibilidade deve atingir somente registros legados em que a propriedade realmente não existe.
+
+Use uma verificação semanticamente equivalente a:
+
+```ts
+o.isAdmin === undefined
+```
+
+ou uma checagem explícita de presença da propriedade, se for mais apropriada ao tipo atual.
+
+Comportamento obrigatório:
+
+- registro legado `Pastor` sem campo `isAdmin` → pode migrar para `isAdmin: true` para preservar acesso anterior;
+- registro legado `admin` sem campo `isAdmin` → pode migrar para `isAdmin: true`;
+- `Pastor` com `isAdmin: false` → permanece `false`;
+- qualquer novo Pastor/obreiro com `isAdmin: false` → permanece `false`;
+- cargo, sozinho, não deve voltar a conceder administração após essa migração.
+
+Preserve a sincronização já implementada de `currentUser` com o registro migrado.
+
+## 2. Padronizar a linguagem para “PIN administrativo”
+
+A revisão do commit `8da1b386...` encontrou textos como “PIN Master” / “PIN master” na área de Segurança, apesar de o restante do P0 já usar linguagem administrativa explícita.
+
+### Resultado esperado
+
+Padronize a interface para:
+
+- `PIN administrativo`;
+- `senha administrativa`, quando o texto estiver se referindo à autorização pelo PIN.
+
+Evite:
+
+- `Master`;
+- `PIN Master`;
+- `Senha Master`.
+
+Não altere nomes internos de variáveis apenas por estética se isso não trouxer ganho real. O foco é linguagem apresentada ao usuário.
+
+## 3. Garantir que PIN seja realmente numérico
+
+A UI usa `inputMode="numeric"` e mensagens como “mínimo 4 dígitos”, mas o domínio atualmente valida principalmente o comprimento da string. `inputMode` não impede caracteres não numéricos.
+
+### Resultado esperado
+
+A política do PIN administrativo deve ser consistente em todos os fluxos de criação e alteração:
+
+- somente dígitos `0-9`;
+- mínimo de 4 dígitos;
+- PIN vazio é inválido;
+- caracteres, espaços, sinais e letras são inválidos;
+- confirmação do PIN continua exigindo igualdade entre os valores.
+
+Implemente a validação em nível reutilizável/domínio quando possível, em vez de depender apenas do atributo visual do input.
+
+Uma regra equivalente a esta é adequada:
+
+```ts
+/^\d{4,}$/
+```
+
+Aplique de forma coerente em:
+
+- bootstrap inicial;
+- configuração do primeiro PIN em instalação migrada;
+- alteração do PIN administrativo.
+
+A UI deve exibir mensagem clara quando o valor não for um PIN numérico válido.
 
 # Escopo e restrições
 
-- Não avance para navegação, Home, Settings estrutural, formulários, Histórico por sessões ou Púlpito focado.
-- Não faça redesign visual.
-- Não troque stack, Firebase, storage ou arquitetura geral.
-- Não introduza biblioteca de autenticação ou backend novo.
-- Não reintroduza PIN padrão ou dados demo.
-- Não use flags públicas do tipo `bypass...`, `skipAuth`, `force`, `ignorePermission` para contornar uma regra de domínio.
-- Preserve compatibilidade com dados reais existentes.
-- Mantenha o app simples; isto é autorização operacional coerente, não uma plataforma enterprise de identidade.
-- Não altere código não relacionado apenas para “limpar” ou refatorar.
-
-# Execução
-
-## 1. Corrigir a identificação do dirigente atual sem exigir PIN novamente
-
-No estado atual, `CultoContext.definirDirigente()` já reconhece corretamente que, se `cultoAtivo.dirigenteId === novoDirigente.id`, não há troca real e pode retornar sucesso sem exigir PIN.
-
-Porém `LoginScreen.tsx` exige PIN vazio antes de chamar o contexto sempre que `isDirigindoCulto` está marcado. Isso impede o comportamento correto.
-
-### Resultado esperado
-
-- Se o obreiro selecionado já é o dirigente atual do culto em andamento, ele pode se identificar e ser encaminhado ao Púlpito sem fornecer PIN novamente.
-- Se o obreiro selecionado é diferente do dirigente atual e tenta assumir a direção, a autorização continua obrigatória.
-- PIN vazio nunca autoriza uma troca real de dirigente.
-- A regra de domínio continua protegida no contexto; a UI apenas deixa de bloquear o caso já autorizado.
-
-## 2. Remover `bypassAdminCheck` do contrato público de `addObreiro()`
-
-O estado atual expõe algo equivalente a:
-
-```ts
-addObreiro(obreiro, bypassAdminCheck?: boolean)
-```
-
-Embora usado pelo bootstrap, qualquer chamador pode passar `true`, o que recria um bypass de autorização no próprio contexto.
-
-### Resultado esperado
-
-- `addObreiro()` normal nunca recebe parâmetro que desligue autorização.
-- Fora do bootstrap, somente administrador pode cadastrar obreiro.
-- Crie uma operação específica para bootstrap inicial, por exemplo `bootstrapInitialAdmin(...)` ou equivalente coerente com a arquitetura existente.
-- Essa operação só pode funcionar quando o estado realmente é de primeira configuração: nenhum obreiro cadastrado e nenhum primeiro administrador já criado.
-- Prefira que a operação de bootstrap mantenha invariantes de perfil + PIN de forma coordenada. Não deixe um boolean genérico público contornar autorização.
-
-## 3. Corrigir migração de instalação existente sem PIN configurado
-
-Antes do P0, instalações podiam depender do fallback `1234` sem ter `ADMIN_PIN` persistido. Após removê-lo, pode existir este estado legítimo:
-
-- há obreiros reais existentes;
-- há pelo menos um administrador migrado ou explícito;
-- `hasPinConfigured === false`;
-- `isBootstrap === false` porque já existem obreiros.
-
-Nesse estado o sistema não deve voltar ao `1234`, mas também não pode deixar o administrador sem caminho para criar o primeiro PIN.
-
-### Resultado esperado
-
-- Modele explicitamente o estado “instalação existente com administrador, mas PIN ainda não configurado”.
-- Um administrador legitimamente identificado deve poder criar o primeiro PIN sem informar um PIN antigo inexistente.
-- Usuário não administrador não pode fazer isso.
-- Depois que o PIN existe, qualquer alteração volta a exigir o PIN atual conforme a regra existente.
-- Não apague ou recrie obreiros para resolver a migração.
-- Não baseie autorização em nome, índice da lista ou cargo novo escolhido pelo usuário.
-
-## 4. Restringir `setInitialPin()` e operações equivalentes
-
-No estado atual, `setInitialPin(pin)` verifica principalmente se ainda não existe PIN. Isso é amplo demais se qualquer consumidor do contexto puder chamá-lo.
-
-### Resultado esperado
-
-A criação de PIN sem PIN anterior só pode ocorrer em um destes estados válidos:
-
-1. bootstrap real de instalação nova, durante a criação do primeiro administrador; ou
-2. migração de instalação existente sem PIN, executada por administrador explicitamente autorizado.
-
-Fora desses estados, a operação deve retornar falha e não alterar storage.
-
-Se a solução do item 2 consolidar bootstrap em uma operação específica, prefira reduzir ou eliminar a exposição pública de `setInitialPin()` quando ela deixar de ser necessária.
-
-## 5. Corrigir sucesso falso em `finalizarCulto()`
-
-No estado atual, após verificar permissão, `finalizarCulto()` retorna `{ success: true }` mesmo quando `cultoAtivo` é `null` ou não há sessão em andamento.
-
-### Resultado esperado
-
-- Se não existe culto em andamento, retorne `{ success: false, message: ... }`.
-- Se o culto existe mas já está finalizado, também não retorne sucesso de uma operação que nada fez.
-- Mantenha a regra atual: apenas dirigente do culto em andamento ou administrador pode encerrar.
-- Não modifique storage quando a operação for inválida.
-
-## 6. Sincronizar `currentUser` após migração de `isAdmin`
-
-A migração atual pode atualizar um obreiro persistido antigo para `isAdmin: true`, mas `currentUser` é carregado separadamente do `localStorage` e pode continuar contendo a versão antiga do objeto durante a sessão.
-
-### Resultado esperado
-
-- Depois de migrar a lista de obreiros, se `currentUser.id` existir na lista migrada, sincronize o usuário corrente com a versão persistida/migrada correspondente.
-- Atualize também `ipra_current_user_v1` quando necessário.
-- Não conceda admin a novos usuários por cargo; esta sincronização serve apenas para refletir a migração de compatibilidade já deliberada.
+- Não avance para P1/P2.
+- Não modifique fluxos já aprovados do P0.
+- Não altere política de quem é administrador além da correção específica da migração `undefined` versus `false`.
+- Não reintroduza inferência permanente de admin por cargo.
+- Não altere bootstrap, troca de dirigente, encerramento de culto ou exclusão de avisos além do necessário para manter compatibilidade.
+- Não introduza dependências ou abstrações novas para três correções simples.
+- Não faça redesign.
 
 # Validação
 
@@ -163,43 +151,33 @@ npm run lint
 npm run build
 ```
 
-Além disso, valide manualmente ou por testes existentes os seguintes cenários:
+Valide também estes cenários:
 
-1. instalação nova, zero obreiros → bootstrap aparece;
-2. bootstrap cria exatamente um primeiro administrador e um PIN válido;
-3. não existe API pública de cadastro que aceite flag para ignorar autorização;
-4. após bootstrap, usuário comum não cadastra obreiro;
-5. administrador cadastra obreiro normalmente;
-6. dirigente atual seleciona seu nome, marca que está dirigindo e entra sem redigitar PIN;
-7. outro obreiro tenta assumir direção sem PIN → falha;
-8. outro obreiro tenta PIN errado → falha;
-9. troca autorizada de dirigente continua funcionando;
-10. instalação existente com admin e sem PIN consegue criar o primeiro PIN por fluxo explícito de migração;
-11. usuário comum nesse mesmo estado não consegue criar PIN;
-12. depois do primeiro PIN, mudança de PIN exige o PIN atual;
-13. `setInitialPin` ou equivalente falha fora de bootstrap/migração;
-14. encerrar sem culto ativo retorna falha;
-15. encerrar culto já finalizado retorna falha;
-16. dirigente/admin encerram culto em andamento normalmente;
-17. usuário comum não encerra culto;
-18. usuário migrado para `isAdmin: true` tem `currentUser` sincronizado;
-19. criar novo Pastor depois da migração não concede admin automaticamente;
-20. regras de exclusão de aviso introduzidas no commit `45a249e` continuam funcionando.
+1. Pastor legado sem propriedade `isAdmin` migra para administrador conforme a compatibilidade atual;
+2. Pastor com `isAdmin: false` continua não administrador após recarga/migração;
+3. novo Pastor com `isAdmin: false` não recebe administração automaticamente;
+4. `currentUser` continua sincronizado quando uma migração legítima ocorre;
+5. não existe mais texto visível “Master”, “PIN Master” ou “Senha Master” relacionado ao PIN;
+6. PIN `1234` é aceito quando criado normalmente, sem qualquer significado especial de padrão;
+7. PIN `123` é rejeitado;
+8. PIN `12a4` é rejeitado;
+9. PIN `12 34` é rejeitado;
+10. PIN `abcd` é rejeitado;
+11. bootstrap aplica a mesma regra numérica;
+12. migração de primeiro PIN aplica a mesma regra numérica;
+13. alteração de PIN aplica a mesma regra numérica;
+14. as correções anteriores do P0 continuam funcionando.
 
 # Critério de pronto
 
-Considere o P0 encerrado somente quando:
+Considere esta microcorreção concluída somente quando:
 
-- o dirigente atual não é obrigado a reautorizar uma ação que não é troca de dirigente;
-- mudança real de dirigente continua protegida;
-- não existe `bypassAdminCheck` ou equivalente público;
-- bootstrap possui operação específica e invariantes explícitos;
-- instalação existente sem PIN tem caminho seguro de migração sem `1234`;
-- criação inicial de PIN não pode ser chamada em estado arbitrário;
-- `finalizarCulto()` não retorna sucesso falso;
-- `currentUser` reflete corretamente a migração de permissão explícita;
-- nenhuma correção já concluída do P0 foi desfeita;
+- migração distingue `isAdmin === undefined` de `isAdmin === false`;
+- `isAdmin: false` nunca é sobrescrito apenas por cargo;
+- linguagem visível usa “PIN administrativo”/“senha administrativa” em vez de “Master”;
+- PIN administrativo aceita apenas dígitos e mínimo de 4 caracteres numéricos em todos os fluxos de criação/alteração;
+- nenhuma correção anterior do P0 foi desfeita;
 - `npm run lint` passa;
 - `npm run build` passa.
 
-Ao concluir, faça um commit separado na branch `implementacao-fases` e informe objetivamente: arquivos alterados, comportamento antes/depois, validações executadas e SHA do commit. Não avance para P1/P2 nesse mesmo commit.
+Ao concluir, faça um commit separado na branch `implementacao-fases` contendo somente essas microcorreções e informe arquivos alterados, validações executadas e SHA do commit. Não avance para P1/P2 no mesmo commit.
