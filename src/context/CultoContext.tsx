@@ -5,6 +5,8 @@ import { useAuth } from './AuthContext';
 
 interface CultoContextType {
   cultoAtivo: CultoAtivo | null;
+  historicoCultos: CultoAtivo[];
+  recarregarHistoricoCultos: () => void;
   isDirigente: boolean;
   dirigenteAtualNome: string;
   dirigenteAtualCargo: string;
@@ -18,10 +20,16 @@ const CultoContext = createContext<CultoContextType | undefined>(undefined);
 export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { currentUser, verifyAdminPin, isAdmin } = useAuth();
   const [cultoAtivo, setCultoAtivo] = useState<CultoAtivo | null>(() => storageService.getCultoAtivo());
+  const [historicoCultos, setHistoricoCultos] = useState<CultoAtivo[]>(() => storageService.getHistoricoCultos());
+
+  const recarregarHistoricoCultos = () => {
+    setHistoricoCultos(storageService.getHistoricoCultos());
+  };
 
   useEffect(() => {
     const unsubscribe = storageService.subscribeToCulto((updatedCulto) => {
       setCultoAtivo(updatedCulto);
+      setHistoricoCultos(storageService.getHistoricoCultos());
     });
 
     return () => unsubscribe();
@@ -129,6 +137,8 @@ export const CultoProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     <CultoContext.Provider
       value={{
         cultoAtivo,
+        historicoCultos,
+        recarregarHistoricoCultos,
         isDirigente,
         dirigenteAtualNome,
         dirigenteAtualCargo,

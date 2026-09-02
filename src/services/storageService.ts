@@ -19,6 +19,7 @@ import type { Firestore } from 'firebase/firestore';
 export const STORAGE_KEYS = {
   OBREIROS: 'ipra_obreiros_v1',
   CULTO_ATIVO: 'ipra_culto_ativo_v1',
+  HISTORICO_CULTOS: 'ipra_historico_cultos_v1',
   AVISOS: 'ipra_avisos_v1',
   FIREBASE_CONFIG: 'ipra_firebase_config_v1',
   ADMIN_PIN: 'ipra_admin_pin_v1',
@@ -166,6 +167,22 @@ class StorageService {
 
   public saveCultoAtivo(culto: CultoAtivo) {
     localStorage.setItem(STORAGE_KEYS.CULTO_ATIVO, JSON.stringify(culto));
+
+    // Atualiza também a lista histórica de cultos
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+      const list: CultoAtivo[] = raw ? JSON.parse(raw) : [];
+      const index = list.findIndex((c) => c.id === culto.id);
+      if (index >= 0) {
+        list[index] = culto;
+      } else {
+        list.unshift(culto);
+      }
+      localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(list));
+    } catch {
+      // Ignora erro de JSON
+    }
+
     this.cultoListeners.forEach((cb) => cb(culto));
     this.broadcast('CULTO_UPDATED', culto);
 
@@ -177,6 +194,76 @@ class StorageService {
         console.warn('Erro ao sincronizar culto com Firebase:', err);
       }
     }
+  }
+
+  public getHistoricoCultos(): CultoAtivo[] {
+    try {
+      let historico: CultoAtivo[] = [];
+      const raw = localStorage.getItem(STORAGE_KEYS.HISTORICO_CULTOS);
+      if (raw) {
+        historico = JSON.parse(raw);
+      }
+
+      const cultoAtivo = this.getCultoAtivo();
+      if (cultoAtivo) {
+        const exists = historico.some((c) => c.id === cultoAtivo.id);
+        if (!exists) {
+          historico = [cultoAtivo, ...historico];
+        } else {
+          historico = historico.map((c) => (c.id === cultoAtivo.id ? cultoAtivo : c));
+        }
+      }
+
+      // Reconciliação retrocompatível: garante que avisos passados com cultoId tenham uma sessão registrada
+      const avisos = this.getAvisos();
+      const cultoIdsExistentes = new Set(historico.map((c) => c.id));
+      const avisosPorCultoId = new Map<string, AvisoItem[]>();
+
+      for (const a of avisos) {
+        if (a.cultoId && !cultoIdsExistentes.has(a.cultoId)) {
+          const list = avisosPorCultoId.get(a.cultoId) || [];
+          list.push(a);
+          avisosPorCultoId.set(a.cultoId, list);
+        }
+      }
+
+      let precisaSalvar = false;
+      for (const [cid, itens] of avisosPorCultoId.entries()) {
+        const primeiro = itens[0];
+        const dataCulto = primeiro?.criadoEm ? primeiro.criadoEm.split('T')[0] : new Date().toISOString().split('T')[0];
+        const sintetico: CultoAtivo = {
+          id: cid,
+          data: dataCulto,
+          nomeCulto: 'Culto de Celebração',
+          horarioInicio: 'Histórico',
+          dirigenteId: 'ipra_pastor',
+          dirigenteNome: 'Pr. Cláudio Lísias',
+          dirigenteCargo: 'pastor',
+          status: 'finalizado',
+        };
+        historico.push(sintetico);
+        precisaSalvar = true;
+      }
+
+      // Ordenar por status (em andamento primeiro) e depois por data/id decrescente
+      historico.sort((a, b) => {
+        if (a.status === 'em_andamento' && b.status !== 'em_andamento') return -1;
+        if (b.status === 'em_andamento' && a.status !== 'em_andamento') return 1;
+        return (b.data || '').localeCompare(a.data || '') || b.id.localeCompare(a.id);
+      });
+
+      if (precisaSalvar) {
+        localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(historico));
+      }
+
+      return historico;
+    } catch {
+      return [];
+    }
+  }
+
+  public saveHistoricoCultos(cultos: CultoAtivo[]) {
+    localStorage.setItem(STORAGE_KEYS.HISTORICO_CULTOS, JSON.stringify(cultos));
   }
 
   // Troca o dirigente de um culto existente. NÃO cria culto novo.
