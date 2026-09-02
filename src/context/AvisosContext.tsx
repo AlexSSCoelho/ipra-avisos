@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import type { AvisoItem, TipoAviso, VisitanteData, OracaoData, ReuniaoData, GeralData } from '../types';
+import type { AvisoItem, TipoAviso, VisitanteData, OracaoData, ReuniaoData, GeralData, EditAvisoParams } from '../types';
 import { storageService } from '../services/storageService';
 import { audioFeedback } from '../services/audioService';
 import { useAuth } from './AuthContext';
@@ -21,6 +21,7 @@ interface AvisosContextType {
   avisosAnunciados: AvisoItem[];
   meusAvisosHoje: AvisoItem[];
   adicionarAviso: (params: AddAvisoParams) => void;
+  editarAviso: (id: string, params: EditAvisoParams) => { success: boolean; message?: string };
   marcarComoAnunciado: (id: string) => void;
   desmarcarComoAnunciado: (id: string) => void;
   excluirAviso: (id: string) => { success: boolean; message?: string };
@@ -144,6 +145,47 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     return { success: true };
   };
 
+  const editarAviso = (id: string, params: EditAvisoParams): { success: boolean; message?: string } => {
+    const aviso = avisos.find((a) => a.id === id);
+    if (!aviso) return { success: false, message: 'Aviso não encontrado.' };
+
+    // Aviso anunciado não pode ser editado
+    if (aviso.status === 'anunciado') {
+      return { success: false, message: 'Um aviso já anunciado não pode ser alterado.' };
+    }
+
+    // Apenas o autor (aviso próprio), dirigente do culto ativo ou admin podem editar
+    const isAutor = currentUser?.id === aviso.autorId;
+    if (!isAutor && !isDirigente && !isAdmin) {
+      return { success: false, message: 'Sem permissão para editar este aviso.' };
+    }
+
+    const updates: Partial<AvisoItem> = {
+      visitante: params.visitante !== undefined ? params.visitante : aviso.visitante,
+      oracao: params.oracao !== undefined ? params.oracao : aviso.oracao,
+      reuniao: params.reuniao !== undefined ? params.reuniao : aviso.reuniao,
+      geral: params.geral !== undefined ? params.geral : aviso.geral,
+    };
+
+    setAvisos((prev) =>
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              ...updates,
+            }
+          : item
+      )
+    );
+
+    const ok = storageService.updateAvisoContent(id, updates);
+    if (!ok) {
+      return { success: false, message: 'Falha ao salvar a edição no armazenamento.' };
+    }
+
+    return { success: true };
+  };
+
 
   const totalPendentes = avisosPendentes.length;
   const totalAnunciados = avisosAnunciados.length;
@@ -161,6 +203,7 @@ export const AvisosProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         avisosAnunciados,
         meusAvisosHoje,
         adicionarAviso,
+        editarAviso,
         marcarComoAnunciado,
         desmarcarComoAnunciado,
         excluirAviso,

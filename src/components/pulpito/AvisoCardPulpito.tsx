@@ -9,7 +9,7 @@ import {
   Calendar
 } from 'lucide-react';
 import type { AvisoItem } from '../../types';
-import { formatHora, formatHoraMinutosAtras } from '../../utils/formatters';
+import { formatHora, formatHoraMinutosAtras, getCategoriaOracaoLabel } from '../../utils/formatters';
 import { useAccessibility } from '../../context/AccessibilityContext';
 
 interface AvisoCardPulpitoProps {
@@ -153,12 +153,20 @@ export const AvisoCardPulpito: React.FC<AvisoCardPulpitoProps> = ({
               {aviso.oracao.nomePessoa}
             </div>
 
-            <div 
-              style={{ fontSize: `${1.05 * fontScale}rem` }}
-              className="text-slate-800 dark:text-slate-100 font-medium italic bg-amber-50/70 dark:bg-amber-950/40 p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-800/60 leading-relaxed break-words"
-            >
-              "{aviso.oracao.motivo}"
-            </div>
+            {aviso.oracao.categoria && (
+              <div className="inline-block px-2.5 py-1 rounded-lg bg-amber-100/80 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-bold">
+                Intercessão: {getCategoriaOracaoLabel(aviso.oracao.categoria)}
+              </div>
+            )}
+
+            {aviso.oracao.motivo && (
+              <div 
+                style={{ fontSize: `${1.05 * fontScale}rem` }}
+                className="text-slate-800 dark:text-slate-100 font-medium italic bg-amber-50/70 dark:bg-amber-950/40 p-3.5 rounded-xl border border-amber-200/80 dark:border-amber-800/60 leading-relaxed break-words"
+              >
+                "{aviso.oracao.motivo}"
+              </div>
+            )}
           </div>
         )}
 
@@ -198,12 +206,20 @@ export const AvisoCardPulpito: React.FC<AvisoCardPulpitoProps> = ({
               {aviso.geral.titulo}
             </div>
 
-            <div 
-              style={{ fontSize: `${0.95 * fontScale}rem` }}
-              className="text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 break-words"
-            >
-              {aviso.geral.descricao}
-            </div>
+            {aviso.geral.destinatario && (
+              <div className="text-xs font-bold text-blue-700 dark:text-blue-300">
+                Público: {aviso.geral.destinatario}
+              </div>
+            )}
+
+            {aviso.geral.descricao && (
+              <div 
+                style={{ fontSize: `${0.95 * fontScale}rem` }}
+                className="text-slate-700 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-950/60 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 break-words"
+              >
+                {aviso.geral.descricao}
+              </div>
+            )}
 
             {aviso.geral.dataEvento && (
               <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 font-bold">

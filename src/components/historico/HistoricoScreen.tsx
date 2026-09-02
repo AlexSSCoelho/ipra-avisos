@@ -29,10 +29,10 @@ export const HistoricoScreen: React.FC = () => {
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
         const nomeVisitante = item.visitante?.nome.toLowerCase() || '';
-        const cidade = item.visitante?.cidade.toLowerCase() || '';
-        const igreja = item.visitante?.igreja.toLowerCase() || '';
+        const cidade = item.visitante?.cidade?.toLowerCase() || '';
+        const igreja = item.visitante?.igreja?.toLowerCase() || '';
         const nomeOracao = item.oracao?.nomePessoa.toLowerCase() || '';
-        const motivoOracao = item.oracao?.motivo.toLowerCase() || '';
+        const motivoOracao = item.oracao?.motivo?.toLowerCase() || '';
         const localReuniao = item.reuniao?.local.toLowerCase() || '';
         const tituloGeral = item.geral?.titulo.toLowerCase() || '';
         const autor = item.autorNome.toLowerCase();
@@ -81,7 +81,8 @@ export const HistoricoScreen: React.FC = () => {
     if (visitantes.length > 0) {
       relatorio += `👤 *VISITANTES (${visitantes.length}):*\n`;
       visitantes.forEach((v, idx) => {
-        relatorio += `${idx + 1}. *${v.visitante?.nome}* - ${v.visitante?.cidade} (${v.visitante?.igreja})\n`;
+        const origens = [v.visitante?.cidade, v.visitante?.igreja ? `(${v.visitante.igreja})` : ''].filter(Boolean).join(' ');
+        relatorio += `${idx + 1}. *${v.visitante?.nome}*${origens ? ` - ${origens}` : ''}\n`;
         if (v.visitante?.observacao) relatorio += `   _Obs: ${v.visitante.observacao}_\n`;
       });
       relatorio += `\n`;
@@ -91,7 +92,10 @@ export const HistoricoScreen: React.FC = () => {
     if (oracoes.length > 0) {
       relatorio += `🙏 *PEDIDOS DE ORAÇÃO (${oracoes.length}):*\n`;
       oracoes.forEach((o, idx) => {
-        relatorio += `${idx + 1}. *${o.oracao?.nomePessoa}* ${o.oracao?.urgente ? '🚨 (Prioridade)' : ''}\n   _${o.oracao?.motivo}_\n`;
+        relatorio += `${idx + 1}. *${o.oracao?.nomePessoa}* ${o.oracao?.urgente ? '🚨 (Prioridade)' : ''}\n`;
+        if (o.oracao?.motivo) {
+          relatorio += `   _${o.oracao.motivo}_\n`;
+        }
       });
       relatorio += `\n`;
     }
@@ -299,9 +303,11 @@ export const HistoricoScreen: React.FC = () => {
                     <div className="font-black text-sm sm:text-base text-slate-900 dark:text-white break-words">
                       {aviso.visitante.nome}
                     </div>
-                    <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 break-words font-medium">
-                      {aviso.visitante.cidade} • {aviso.visitante.igreja}
-                    </div>
+                    {[aviso.visitante.cidade, aviso.visitante.igreja].filter(Boolean).length > 0 && (
+                      <div className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 break-words font-medium">
+                        {[aviso.visitante.cidade, aviso.visitante.igreja].filter(Boolean).join(' • ')}
+                      </div>
+                    )}
                     {aviso.visitante.observacao && (
                       <div className="text-xs text-slate-600 dark:text-slate-300 italic mt-1 break-words bg-slate-50 dark:bg-slate-950/60 p-2.5 rounded-xl border border-slate-200/60 dark:border-slate-800">
                         Nota: {aviso.visitante.observacao}
@@ -315,9 +321,11 @@ export const HistoricoScreen: React.FC = () => {
                     <div className="font-black text-sm sm:text-base text-slate-900 dark:text-white break-words">
                       {aviso.oracao.nomePessoa}
                     </div>
-                    <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words bg-amber-50/70 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/60 leading-relaxed italic">
-                      "{aviso.oracao.motivo}"
-                    </div>
+                    {aviso.oracao.motivo && (
+                      <div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 break-words bg-amber-50/70 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-800/60 leading-relaxed italic">
+                        "{aviso.oracao.motivo}"
+                      </div>
+                    )}
                   </div>
                 )}
 

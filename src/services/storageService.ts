@@ -1,4 +1,5 @@
 import type { Obreiro, CultoAtivo, AvisoItem, FirebaseConfig } from '../types';
+import { REAL_OBREIROS_IPRA } from '../data/initialObreiros';
 import { initializeApp, getApps } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
 import { 
@@ -42,9 +43,28 @@ class StorageService {
   }
 
   private initLocalData() {
-    // Garante que as chaves existam mas NÃO inicializa com dados fictícios.
-    // Instalação nova começa em estado vazio; o administrador cadastra os dados reais.
     if (typeof window === 'undefined') return;
+    try {
+      const existing = localStorage.getItem(STORAGE_KEYS.OBREIROS);
+      if (!existing) {
+        localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(REAL_OBREIROS_IPRA));
+      } else {
+        const parsed: Obreiro[] = JSON.parse(existing);
+        if (parsed.length === 0) {
+          localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(REAL_OBREIROS_IPRA));
+        } else {
+          // Garante que os obreiros oficiais da IPRA estejam cadastrados preservando registros existentes
+          const existingIds = new Set(parsed.map((o) => o.id));
+          const toAdd = REAL_OBREIROS_IPRA.filter((ro) => !existingIds.has(ro.id));
+          if (toAdd.length > 0) {
+            const merged = [...parsed, ...toAdd];
+            localStorage.setItem(STORAGE_KEYS.OBREIROS, JSON.stringify(merged));
+          }
+        }
+      }
+    } catch {
+      // Ignora erro de JSON
+    }
   }
 
 
@@ -233,6 +253,44 @@ class StorageService {
         console.warn('Erro ao atualizar status no Firestore:', err);
       }
     }
+  }
+
+  public updateAvisoContent(id: string, updates: Partial<AvisoItem>): boolean {
+    const avisos = this.getAvisos();
+    const target = avisos.find((a) => a.id === id);
+    if (!target || target.status !== 'pendente') {
+      return false;
+    }
+
+    const updated = avisos.map((item) => {
+      if (item.id === id) {
+        return {
+          ...item,
+          visitante: updates.visitante !== undefined ? updates.visitante : item.visitante,
+          oracao: updates.oracao !== undefined ? updates.oracao : item.oracao,
+          reuniao: updates.reuniao !== undefined ? updates.reuniao : item.reuniao,
+          geral: updates.geral !== undefined ? updates.geral : item.geral,
+        };
+      }
+      return item;
+    });
+    this.saveAvisos(updated);
+
+    if (this.firestore) {
+      try {
+        const avisoDoc = doc(this.firestore, 'avisos', id);
+        const patch: Record<string, unknown> = {};
+        if (updates.visitante !== undefined) patch.visitante = updates.visitante;
+        if (updates.oracao !== undefined) patch.oracao = updates.oracao;
+        if (updates.reuniao !== undefined) patch.reuniao = updates.reuniao;
+        if (updates.geral !== undefined) patch.geral = updates.geral;
+        updateDoc(avisoDoc, patch);
+      } catch (err) {
+        console.warn('Erro ao atualizar conteúdo no Firestore:', err);
+      }
+    }
+
+    return true;
   }
 
   public deleteAviso(id: string) {

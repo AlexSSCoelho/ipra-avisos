@@ -4,6 +4,12 @@ export const getCargoLabel = (cargo?: CargoObreiro): string => {
   switch (cargo) {
     case 'pastor':
       return 'Pastor Titular';
+    case 'pastor_presidente':
+      return 'Pastor Presidente (Menção Honrosa)';
+    case 'pastor_fundador':
+      return 'Pastor Fundador (Menção Honrosa)';
+    case 'pastor_auxiliar':
+      return 'Pastor Auxiliar';
     case 'presbitero':
       return 'Presbítero';
     case 'diacono':
@@ -19,7 +25,7 @@ export const getCargoLabel = (cargo?: CargoObreiro): string => {
     case 'missionaria':
       return 'Missionária';
     case 'admin':
-      return 'Secretaria / Admin';
+      return 'Administrador Master';
     default:
       return 'Obreiro(a)';
   }
@@ -32,6 +38,19 @@ export const getCargoColorClasses = (cargo?: CargoObreiro): { bg: string; text: 
         bg: 'bg-indigo-50 dark:bg-indigo-950/60', 
         text: 'text-indigo-800 dark:text-indigo-300 font-semibold', 
         border: 'border-indigo-200 dark:border-indigo-800' 
+      };
+    case 'pastor_presidente':
+    case 'pastor_fundador':
+      return { 
+        bg: 'bg-amber-50 dark:bg-amber-950/60', 
+        text: 'text-amber-800 dark:text-amber-300 font-bold', 
+        border: 'border-amber-300 dark:border-amber-700' 
+      };
+    case 'pastor_auxiliar':
+      return { 
+        bg: 'bg-sky-50 dark:bg-sky-950/60', 
+        text: 'text-sky-800 dark:text-sky-300 font-semibold', 
+        border: 'border-sky-200 dark:border-sky-800' 
       };
     case 'presbitero':
       return { 
@@ -59,6 +78,12 @@ export const getCargoColorClasses = (cargo?: CargoObreiro): { bg: string; text: 
         bg: 'bg-rose-50 dark:bg-rose-950/60', 
         text: 'text-rose-800 dark:text-rose-300 font-semibold', 
         border: 'border-rose-200 dark:border-rose-800' 
+      };
+    case 'admin':
+      return { 
+        bg: 'bg-purple-50 dark:bg-purple-950/60', 
+        text: 'text-purple-800 dark:text-purple-300 font-bold', 
+        border: 'border-purple-200 dark:border-purple-800' 
       };
     default:
       return { 

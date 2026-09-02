@@ -27,7 +27,7 @@ export const FormAvisoGeral: React.FC = () => {
   const [titulo, setTitulo] = useState('Santa Ceia do Senhor');
   const [tituloPersonalizado, setTituloPersonalizado] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [dataEvento, setDataEvento] = useState('Próximo Domingo');
+  const [dataEvento, setDataEvento] = useState('');
   const [destinatario, setDestinatario] = useState('Toda a Igreja');
   const [showSuccessToast, setShowSuccessToast] = useState(false);
 
@@ -41,7 +41,7 @@ export const FormAvisoGeral: React.FC = () => {
       tipo: 'geral',
       geral: {
         titulo: tituloFinal,
-        descricao: descricao.trim() || 'Aviso comunicado à igreja.',
+        descricao: descricao.trim() || undefined,
         dataEvento: dataEvento.trim() || undefined,
         destinatario: destinatario.trim() || 'Toda a Igreja',
       },

@@ -1,6 +1,9 @@
 // Cargos Eclesiásticos da IPRA
 export type CargoObreiro =
   | 'pastor'
+  | 'pastor_presidente' // Menção honrosa
+  | 'pastor_fundador' // Menção honrosa
+  | 'pastor_auxiliar'
   | 'presbitero'
   | 'diacono'
   | 'diaconisa'
@@ -38,8 +41,8 @@ export type StatusAviso = 'pendente' | 'anunciado';
 export interface VisitanteData {
   nome: string;
   genero: 'homem' | 'mulher' | 'casal' | 'crianca' | 'familia';
-  cidade: string;
-  igreja: string;
+  cidade?: string;
+  igreja?: string;
   acompanhante?: string;
   observacao?: string;
 }
@@ -56,7 +59,7 @@ export type CategoriaOracao =
 export interface OracaoData {
   nomePessoa: string;
   categoria: CategoriaOracao;
-  motivo: string;
+  motivo?: string;
   urgente: boolean;
 }
 
@@ -74,7 +77,7 @@ export interface ReuniaoData {
   grupo: GrupoReuniao;
   grupoNomePersonalizado?: string;
   dataTexto: string; // Ex: "Hoje às 19:30", "Próxima Quarta (03/09)"
-  dataIso?: string;
+  dataIso?: string; // YYYY-MM-DD
   horario: string; // Ex: "19h30"
   local: string; // Ex: "Casa do Irmão João - Rua X, 120"
   responsavel?: string;
@@ -82,7 +85,7 @@ export interface ReuniaoData {
 
 export interface GeralData {
   titulo: string;
-  descricao: string;
+  descricao?: string;
   dataEvento?: string;
   destinatario?: string; // Ex: "Toda a Igreja", "Liderança", "Mocidade"
 }
@@ -99,6 +102,13 @@ export interface AvisoItem {
   autorCargo: CargoObreiro;
   
   // Conteúdo por tipo
+  visitante?: VisitanteData;
+  oracao?: OracaoData;
+  reuniao?: ReuniaoData;
+  geral?: GeralData;
+}
+
+export interface EditAvisoParams {
   visitante?: VisitanteData;
   oracao?: OracaoData;
   reuniao?: ReuniaoData;
