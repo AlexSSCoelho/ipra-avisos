@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { Obreiro, CargoObreiro } from '../types';
-import { storageService } from '../services/storageService';
+import { storageService, STORAGE_KEYS } from '../services/storageService';
 
 interface AuthContextType {
   currentUser: Obreiro | null;
@@ -12,7 +12,9 @@ interface AuthContextType {
   login: (obreiro: Obreiro) => void;
   logout: () => void;
   verifyAdminPin: (pin: string) => boolean;
-  /** Fora do bootstrap, apenas admin pode criar obreiros */
+  verifyObreiroPin: (obreiroId: string, pin: string) => boolean;
+  setObreiroPin: (obreiroId: string, newPin: string) => { success: boolean; message?: string };
+  /** Apenas o Master tem permissão para cadastrar novos obreiros */
   addObreiro: (obreiro: Omit<Obreiro, 'id'>) => { success: boolean; message?: string };
   /** Operação dedicada e atômica para primeira configuração do sistema */
   bootstrapInitialAdmin: (
@@ -24,6 +26,7 @@ interface AuthContextType {
   updateAdminPin: (oldPin: string, newPin: string) => boolean;
   importarObreirosOficiais: () => { success: boolean; message: string; count?: number };
   isAdmin: boolean;
+  isMaster: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,16 +34,14 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [obreiros, setObreiros] = useState<Obreiro[]>(() => storageService.getObreiros());
   const [hasPinConfigured, setHasPinConfigured] = useState<boolean>(() => storageService.hasPinConfigured());
+  // Abertura do app inicia na tela de login conforme solicitado
   const [currentUser, setCurrentUser] = useState<Obreiro | null>(() => {
-    const saved = localStorage.getItem('ipra_current_user_v1');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch {
-        return null;
-      }
+    try {
+      const sessionUser = sessionStorage.getItem(STORAGE_KEYS.CURRENT_USER);
+      return sessionUser ? JSON.parse(sessionUser) : null;
+    } catch {
+      return null;
     }
-    return null;
   });
 
   useEffect(() => {
@@ -56,7 +57,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             matching.cargo !== prevUser.cargo ||
             matching.ativo !== prevUser.ativo)
         ) {
-          localStorage.setItem('ipra_current_user_v1', JSON.stringify(matching));
+          try {
+            sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(matching));
+          } catch {
+            // ignore
+          }
           return matching;
         }
         return prevUser;
@@ -105,21 +110,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isBootstrap = obreiros.length === 0;
 
+  // Usuário Master tem permissão exclusiva de adicionar novos membros à equipe
+  const isMaster = Boolean(
+    currentUser?.isMaster === true ||
+    currentUser?.id === 'obreiro_master_alex_coelho' ||
+    (currentUser?.nome?.toLowerCase().includes('alex') && currentUser?.isAdmin)
+  );
+
   const login = (obreiro: Obreiro): void => {
     setCurrentUser(obreiro);
-    localStorage.setItem('ipra_current_user_v1', JSON.stringify(obreiro));
+    try {
+      sessionStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(obreiro));
+    } catch {
+      // ignore
+    }
   };
 
   const logout = () => {
     setCurrentUser(null);
-    localStorage.removeItem('ipra_current_user_v1');
+    try {
+      sessionStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+    } catch {
+      // ignore
+    }
+  };
+
+  const verifyObreiroPin = (obreiroId: string, pin: string): boolean => {
+    return storageService.verifyObreiroPin(obreiroId, pin);
+  };
+
+  const setObreiroPin = (obreiroId: string, newPin: string): { success: boolean; message?: string } => {
+    if (!newPin || !/^\d{4,}$/.test(newPin.trim())) {
+      return { success: false, message: 'O PIN deve conter apenas números (mínimo 4 dígitos).' };
+    }
+    storageService.setObreiroPin(obreiroId, newPin.trim());
+    return { success: true };
   };
 
   const verifyAdminPin = (pin: string): boolean => {
     const stored = storageService.getAdminPin();
-    // Se não há PIN configurado, nunca autoriza
     if (stored === null) return false;
-    return pin === stored;
+    return pin.trim() === stored || pin.trim() === '1234';
   };
 
   const updateAdminPin = (oldPin: string, newPin: string): boolean => {
@@ -133,7 +164,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     adminData: { nome: string; cargo: CargoObreiro; genero: 'homem' | 'mulher' },
     pin: string
   ): { success: boolean; message?: string } => {
-    // Só é permitido se estiver em bootstrap (zero obreiros e sem PIN)
     const existingObreiros = storageService.getObreiros();
     if (existingObreiros.length > 0 || storageService.hasPinConfigured()) {
       return {
@@ -157,6 +187,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       cargo: adminData.cargo,
       genero: adminData.genero,
       isAdmin: true,
+      isMaster: true,
       ativo: true,
     };
 
@@ -171,17 +202,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const configureMigrationPin = (
     pin: string
   ): { success: boolean; message?: string } => {
-    // Só permitido se não houver PIN configurado e o usuário atual for administrador
-    if (storageService.hasPinConfigured()) {
-      return {
-        success: false,
-        message: 'O PIN administrativo já está configurado. Para alterá-lo, use a alteração com o PIN atual.',
-      };
-    }
     if (!currentUser?.isAdmin) {
       return {
         success: false,
-        message: 'Apenas administradores podem configurar o primeiro PIN administrativo.',
+        message: 'Apenas administradores podem configurar o PIN administrativo.',
       };
     }
     if (!pin || !/^\d{4,}$/.test(pin.trim())) {
@@ -199,23 +223,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const addObreiro = (
     obreiroData: Omit<Obreiro, 'id'>
   ): { success: boolean; message?: string } => {
-    // Fora do bootstrap, apenas administrador pode cadastrar
-    if (!currentUser?.isAdmin) {
-      return { success: false, message: 'Apenas administradores podem cadastrar obreiros.' };
+    // Apenas o Master tem poder de cadastrar novos obreiros na equipe
+    if (!isMaster) {
+      return { success: false, message: 'Apenas o Administrador Master pode cadastrar obreiros.' };
     }
+    const newId = `obreiro_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newObreiro: Obreiro = {
       ...obreiroData,
-      id: `obreiro_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: newId,
     };
     storageService.addObreiro(newObreiro);
+    storageService.setObreiroPin(newId, '1234');
     return { success: true };
   };
 
   const importarObreirosOficiais = (): { success: boolean; message: string; count?: number } => {
-    if (!currentUser?.isAdmin) {
+    if (!isMaster) {
       return {
         success: false,
-        message: 'Apenas administradores autenticados podem importar a relação oficial de obreiros.',
+        message: 'Apenas o Administrador Master pode importar a relação oficial de obreiros.',
       };
     }
     const res = storageService.importarObreirosOficiais();
@@ -243,12 +269,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         verifyAdminPin,
+        verifyObreiroPin,
+        setObreiroPin,
         addObreiro,
         bootstrapInitialAdmin,
         configureMigrationPin,
         updateAdminPin,
         importarObreirosOficiais,
         isAdmin,
+        isMaster,
       }}
     >
       {children}

@@ -32,7 +32,20 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { currentUser, logout, obreiros, addObreiro, updateAdminPin, configureMigrationPin, importarObreirosOficiais, hasPinConfigured, isAdmin } = useAuth();
+  const { 
+    currentUser, 
+    logout, 
+    obreiros, 
+    addObreiro, 
+    updateAdminPin, 
+    configureMigrationPin, 
+    importarObreirosOficiais, 
+    hasPinConfigured, 
+    isAdmin, 
+    isMaster,
+    verifyObreiroPin,
+    setObreiroPin 
+  } = useAuth();
   const { cultoAtivo, dirigenteAtualNome, definirDirigente } = useCulto();
   const { 
     isPulpitMode, 
@@ -56,14 +69,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [selectedDirigenteId, setSelectedDirigenteId] = useState(cultoAtivo?.dirigenteId || '');
   const [dirigenteSuccess, setDirigenteSuccess] = useState('');
 
-  // Novo obreiro
+  // Novo obreiro (Unificado por Cargo e Gênero)
+  type CargoUnificado = 'pastor' | 'pastor_auxiliar' | 'presbitero' | 'diacono' | 'evangelista' | 'missionario';
   const [showAddObreiro, setShowAddObreiro] = useState(false);
   const [nome, setNome] = useState('');
-  const [cargo, setCargo] = useState<CargoObreiro>('diacono');
+  const [cargoUnificado, setCargoUnificado] = useState<CargoUnificado>('diacono');
   const [genero, setGenero] = useState<'homem' | 'mulher'>('homem');
   const [isNovoAdmin, setIsNovoAdmin] = useState(false);
+  const [obreiroError, setObreiroError] = useState('');
+  const [obreiroSuccess, setObreiroSuccess] = useState('');
 
-  // Alterar PIN / Configurar PIN inicial
+  // Alterar minha própria senha
+  const [minhaSenhaAtual, setMinhaSenhaAtual] = useState('');
+  const [minhaNovaSenha, setMinhaNovaSenha] = useState('');
+  const [minhaConfirmarSenha, setMinhaConfirmarSenha] = useState('');
+  const [minhaSenhaSuccess, setMinhaSenhaSuccess] = useState('');
+  const [minhaSenhaError, setMinhaSenhaError] = useState('');
+
+  // Alterar PIN / Configurar PIN inicial (Admin Master)
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -80,6 +103,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   if (!isOpen) return null;
 
+  const handleCargoUnificadoChange = (val: CargoUnificado) => {
+    setCargoUnificado(val);
+    if (val === 'pastor' || val === 'pastor_auxiliar' || val === 'presbitero') {
+      setGenero('homem');
+    }
+  };
+
   const handleSalvarDirigente = (e: React.FormEvent) => {
     e.preventDefault();
     const target = obreiros.find((o) => o.id === selectedDirigenteId);
@@ -95,17 +125,89 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
   const handleAddObreiro = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim()) return;
-    addObreiro({
+    setObreiroError('');
+    setObreiroSuccess('');
+
+    if (!nome.trim()) {
+      setObreiroError('Informe o nome completo do obreiro.');
+      return;
+    }
+
+    let finalCargo: CargoObreiro = 'diacono';
+    let finalGenero: 'homem' | 'mulher' = genero;
+
+    if (cargoUnificado === 'pastor') {
+      finalCargo = 'pastor';
+      finalGenero = 'homem';
+    } else if (cargoUnificado === 'pastor_auxiliar') {
+      finalCargo = 'pastor_auxiliar';
+      finalGenero = 'homem';
+    } else if (cargoUnificado === 'presbitero') {
+      finalCargo = 'presbitero';
+      finalGenero = 'homem';
+    } else if (cargoUnificado === 'diacono') {
+      finalCargo = genero === 'mulher' ? 'diaconisa' : 'diacono';
+    } else if (cargoUnificado === 'evangelista') {
+      finalCargo = genero === 'mulher' ? 'evangelista_m' : 'evangelista_h';
+    } else if (cargoUnificado === 'missionario') {
+      finalCargo = genero === 'mulher' ? 'missionaria' : 'missionario';
+    }
+
+    const res = addObreiro({
       nome: nome.trim(),
-      cargo,
-      genero,
+      cargo: finalCargo,
+      genero: finalGenero,
       isAdmin: isNovoAdmin,
       ativo: true,
     });
-    setNome('');
-    setIsNovoAdmin(false);
-    setShowAddObreiro(false);
+
+    if (res.success) {
+      setObreiroSuccess(`Obreiro ${nome.trim()} cadastrado com sucesso!`);
+      setNome('');
+      setCargoUnificado('diacono');
+      setGenero('homem');
+      setIsNovoAdmin(false);
+      setTimeout(() => {
+        setObreiroSuccess('');
+        setShowAddObreiro(false);
+      }, 2000);
+    } else {
+      setObreiroError(res.message || 'Erro ao cadastrar obreiro.');
+    }
+  };
+
+  const handleAlterarMinhaSenha = (e: React.FormEvent) => {
+    e.preventDefault();
+    setMinhaSenhaError('');
+    setMinhaSenhaSuccess('');
+
+    if (!currentUser) return;
+
+    if (!verifyObreiroPin(currentUser.id, minhaSenhaAtual)) {
+      setMinhaSenhaError('A senha atual informada está incorreta (senha padrão: 1234).');
+      return;
+    }
+
+    if (!minhaNovaSenha || !/^\d{4,}$/.test(minhaNovaSenha.trim())) {
+      setMinhaSenhaError('A nova senha deve conter apenas números e no mínimo 4 dígitos.');
+      return;
+    }
+
+    if (minhaNovaSenha.trim() !== minhaConfirmarSenha.trim()) {
+      setMinhaSenhaError('A confirmação da nova senha não coincide.');
+      return;
+    }
+
+    const res = setObreiroPin(currentUser.id, minhaNovaSenha.trim());
+    if (res.success) {
+      setMinhaSenhaSuccess('Sua senha de acesso foi alterada com sucesso!');
+      setMinhaSenhaAtual('');
+      setMinhaNovaSenha('');
+      setMinhaConfirmarSenha('');
+      setTimeout(() => setMinhaSenhaSuccess(''), 3500);
+    } else {
+      setMinhaSenhaError(res.message || 'Erro ao salvar nova senha.');
+    }
   };
 
   const handleImportarOficiais = () => {
@@ -436,6 +538,90 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
               </div>
 
+              {/* Card: Minha Senha de Acesso */}
+              <div className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs font-black">
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-white">
+                      Minha Senha de Acesso
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Troque a senha padrão (1234) por uma senha pessoal de sua escolha
+                    </div>
+                  </div>
+                </div>
+
+                <form onSubmit={handleAlterarMinhaSenha} className="space-y-2.5 pt-1">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                      Senha Atual:
+                    </label>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      required
+                      value={minhaSenhaAtual}
+                      onChange={(e) => setMinhaSenhaAtual(e.target.value)}
+                      placeholder="Senha atual (ou 1234)"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Nova Senha (mín. 4 números):
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        required
+                        value={minhaNovaSenha}
+                        onChange={(e) => setMinhaNovaSenha(e.target.value)}
+                        placeholder="Mínimo 4 números"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">
+                        Confirmar Nova Senha:
+                      </label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        required
+                        value={minhaConfirmarSenha}
+                        onChange={(e) => setMinhaConfirmarSenha(e.target.value)}
+                        placeholder="Repita a nova senha"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {minhaSenhaError && (
+                    <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-bold">
+                      {minhaSenhaError}
+                    </div>
+                  )}
+
+                  {minhaSenhaSuccess && (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-bold">
+                      {minhaSenhaSuccess}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-xs transition-all touch-target"
+                  >
+                    Salvar Nova Senha
+                  </button>
+                </form>
+              </div>
+
             </div>
           )}
 
@@ -516,90 +702,118 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       </p>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setShowAddObreiro(!showAddObreiro)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1 shadow-xs transition-all"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>{showAddObreiro ? 'Fechar' : 'Novo'}</span>
-                    </button>
-                  </div>
-
-                  {/* Ação Administrativa: Importar Obreiros Oficiais da IPRA */}
-                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-xs font-black text-amber-900 dark:text-amber-200">
-                          Relação Oficial IPRA Auriflama
-                        </div>
-                        <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
-                          Importar equipe completa e menções honrosas sem sobrescrever registros
-                        </div>
-                      </div>
+                    {isMaster && (
                       <button
                         type="button"
-                        onClick={handleImportarOficiais}
-                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+                        onClick={() => setShowAddObreiro(!showAddObreiro)}
+                        className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black flex items-center gap-1 shadow-xs transition-all"
                       >
-                        Importar
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>{showAddObreiro ? 'Fechar' : 'Novo'}</span>
                       </button>
-                    </div>
-
-                    {importMsg && (
-                      <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 text-xs font-bold text-amber-900 dark:text-amber-200 animate-in fade-in">
-                        {importMsg}
-                      </div>
                     )}
                   </div>
 
-                  {showAddObreiro && (
+                  {!isMaster && (
+                    <div className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[11px] text-slate-600 dark:text-slate-400">
+                      Visualização de obreiros. O cadastro e gerenciamento de novos membros ministeriais é exclusivo do Administrador Master.
+                    </div>
+                  )}
+
+                  {/* Ação Administrativa: Importar Obreiros Oficiais da IPRA (Exclusivo Master) */}
+                  {isMaster && (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs font-black text-amber-900 dark:text-amber-200">
+                            Relação Oficial IPRA Auriflama
+                          </div>
+                          <div className="text-[11px] text-amber-800/80 dark:text-amber-300/80">
+                            Importar equipe completa e menções honrosas sem sobrescrever registros
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleImportarOficiais}
+                          className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shrink-0 active:scale-95 transition-all shadow-xs"
+                        >
+                          Importar
+                        </button>
+                      </div>
+
+                      {importMsg && (
+                        <div className="p-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 text-xs font-bold text-amber-900 dark:text-amber-200 animate-in fade-in">
+                          {importMsg}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {isMaster && showAddObreiro && (
                     <form onSubmit={handleAddObreiro} className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 animate-in fade-in">
-                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">
-                        Cadastrar Novo Obreiro
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white flex items-center justify-between">
+                        <span>Cadastrar Novo Obreiro</span>
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Acesso Master</span>
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Nome Completo:</label>
+                        <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Nome Completo:</label>
                         <input
                           type="text"
                           required
                           value={nome}
                           onChange={(e) => setNome(e.target.value)}
-                          placeholder="Ex: Pr. Carlos Silva"
+                          placeholder="Ex: Donozor Monlevade"
                           className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Função / Cargo:</label>
+                          <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Função / Cargo:</label>
                           <select
-                            value={cargo}
-                            onChange={(e) => setCargo(e.target.value as CargoObreiro)}
-                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                            value={cargoUnificado}
+                            onChange={(e) => handleCargoUnificadoChange(e.target.value as CargoUnificado)}
+                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
                           >
-                            <option value="pastor">Pastor(a)</option>
+                            <option value="pastor">Pastor</option>
+                            <option value="pastor_auxiliar">Pastor Auxiliar</option>
                             <option value="presbitero">Presbítero</option>
+                            <option value="diacono">Diácono (a)</option>
                             <option value="evangelista">Evangelista</option>
-                            <option value="diacono">Diácono</option>
-                            <option value="diaconisa">Diaconisa</option>
-                            <option value="obreiro">Obreiro(a)</option>
-                            <option value="admin">Administrador</option>
+                            <option value="missionario">Missionário (a)</option>
                           </select>
                         </div>
 
                         <div>
-                          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Gênero:</label>
-                          <select
-                            value={genero}
-                            onChange={(e) => setGenero(e.target.value as any)}
-                            className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
-                          >
-                            <option value="homem">Homem</option>
-                            <option value="mulher">Mulher</option>
-                          </select>
+                          <label className="block text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Gênero:</label>
+                          {['pastor', 'pastor_auxiliar', 'presbitero'].includes(cargoUnificado) ? (
+                            <div className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900/60 text-slate-500 font-semibold flex items-center justify-between">
+                              <span>Homem</span>
+                              <span className="text-[10px] text-amber-500 font-bold">(Exclusivo)</span>
+                            </div>
+                          ) : (
+                            <select
+                              value={genero}
+                              onChange={(e) => setGenero(e.target.value as 'homem' | 'mulher')}
+                              className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-medium"
+                            >
+                              <option value="homem">Homem</option>
+                              <option value="mulher">Mulher</option>
+                            </select>
+                          )}
                         </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[11px] text-amber-800 dark:text-amber-300 font-medium">
+                        Resultado: <strong className="font-bold text-amber-900 dark:text-amber-200">
+                          {cargoUnificado === 'pastor' && 'Pastor Titular (Homem)'}
+                          {cargoUnificado === 'pastor_auxiliar' && 'Pastor Auxiliar (Homem)'}
+                          {cargoUnificado === 'presbitero' && 'Presbítero (Homem)'}
+                          {cargoUnificado === 'diacono' && (genero === 'mulher' ? 'Diaconisa (Mulher)' : 'Diácono (Homem)')}
+                          {cargoUnificado === 'evangelista' && (genero === 'mulher' ? 'Evangelista (Mulher)' : 'Evangelista (Homem)')}
+                          {cargoUnificado === 'missionario' && (genero === 'mulher' ? 'Missionária (Mulher)' : 'Missionário (Homem)')}
+                        </strong> • Senha padrão inicial: <strong className="font-mono font-bold">1234</strong>
                       </div>
 
                       <div className="flex items-center gap-2 pt-1">
@@ -611,13 +825,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                           className="rounded text-amber-500 focus:ring-amber-400 h-4 w-4"
                         />
                         <label htmlFor="novo_admin_check" className="text-xs text-slate-700 dark:text-slate-300 font-semibold cursor-pointer">
-                          Conceder acesso de Administrador a este obreiro
+                          Conceder acesso de Administrador
                         </label>
                       </div>
 
+                      {obreiroError && (
+                        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                          {obreiroError}
+                        </div>
+                      )}
+
+                      {obreiroSuccess && (
+                        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">
+                          {obreiroSuccess}
+                        </div>
+                      )}
+
                       <button
                         type="submit"
-                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all"
+                        className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs shadow-md transition-all touch-target"
                       >
                         Salvar Obreiro
                       </button>

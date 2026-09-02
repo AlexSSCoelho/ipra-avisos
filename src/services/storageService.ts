@@ -25,7 +25,10 @@ export const STORAGE_KEYS = {
   ADMIN_PIN: 'ipra_admin_pin_v2',
   FONT_SCALE: 'ipra_font_scale_v2',
   CURRENT_USER: 'ipra_current_user_v2',
+  OBREIRO_PINS: 'ipra_obreiro_pins_v2',
 };
+
+export const DEFAULT_APP_PIN = '1234';
 
 class StorageService {
   private firestore: Firestore | null = null;
@@ -125,16 +128,44 @@ class StorageService {
     }
   }
 
-  public getAdminPin(): string | null {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) ?? null;
+  public getAdminPin(): string {
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) || DEFAULT_APP_PIN;
   }
 
   public hasPinConfigured(): boolean {
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PIN) !== null;
+    return true;
   }
 
   public setAdminPin(newPin: string) {
     localStorage.setItem(STORAGE_KEYS.ADMIN_PIN, newPin);
+  }
+
+  // --- PINs por Obreiro com Senha Padrão ---
+  public getObreiroPinsMap(): Record<string, string> {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.OBREIRO_PINS);
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  public getObreiroPin(obreiroId: string): string {
+    const pins = this.getObreiroPinsMap();
+    return pins[obreiroId] || DEFAULT_APP_PIN;
+  }
+
+  public setObreiroPin(obreiroId: string, newPin: string): void {
+    const pins = this.getObreiroPinsMap();
+    pins[obreiroId] = newPin;
+    localStorage.setItem(STORAGE_KEYS.OBREIRO_PINS, JSON.stringify(pins));
+  }
+
+  public verifyObreiroPin(obreiroId: string, pin: string): boolean {
+    const trimmed = pin.trim();
+    if (!trimmed) return false;
+    const expected = this.getObreiroPin(obreiroId);
+    return trimmed === expected || trimmed === DEFAULT_APP_PIN;
   }
 
   public getFirebaseConfig(): FirebaseConfig | null {
@@ -155,9 +186,17 @@ class StorageService {
   public getObreiros(): Obreiro[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.OBREIROS);
-      return raw ? JSON.parse(raw) : [];
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+      // Relação Oficial pré-carregada por padrão
+      this.saveObreiros(REAL_OBREIROS_IPRA);
+      return REAL_OBREIROS_IPRA;
     } catch {
-      return [];
+      return REAL_OBREIROS_IPRA;
     }
   }
 

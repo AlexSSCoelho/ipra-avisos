@@ -20,6 +20,7 @@ export interface Obreiro {
   genero: 'homem' | 'mulher';
   avatar?: string;
   isAdmin?: boolean;
+  isMaster?: boolean;
   ativo: boolean;
 }
 

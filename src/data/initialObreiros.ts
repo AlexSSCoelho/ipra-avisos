@@ -17,6 +17,7 @@ export const REAL_OBREIROS_IPRA: Obreiro[] = [
     cargo: 'admin',
     genero: 'homem',
     isAdmin: true,
+    isMaster: true,
     ativo: true,
   },
 
