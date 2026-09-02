@@ -6,8 +6,7 @@ import {
   Crown, 
   Clock, 
   Play, 
-  Flag, 
-  SlidersHorizontal
+  Flag
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCulto } from '../../context/CultoContext';
@@ -17,58 +16,47 @@ import { getCargoLabel } from '../../utils/formatters';
 interface HomeScreenProps {
   onNavigate: (tab: 'home' | 'diacono' | 'pulpito' | 'historico') => void;
   onOpenIniciarCulto: () => void;
-  onOpenSettings: () => void;
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
   onNavigate,
   onOpenIniciarCulto,
-  onOpenSettings,
 }) => {
   const { currentUser, isAdmin } = useAuth();
   const { cultoAtivo, isDirigente, dirigenteAtualNome, finalizarCulto } = useCulto();
   const { totalPendentes, totalVisitantes, totalOracoes, totalReunioes, totalGerais } = useAvisos();
   const [showEncerrarConfirm, setShowEncerrarConfirm] = useState(false);
 
+  const cultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
+
   return (
     <div className="w-full max-w-2xl mx-auto px-3 py-3.5 space-y-4">
       
       {/* Saudação e Perfil do Obreiro */}
-      <div className="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 font-black text-lg flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
-            {currentUser?.nome.charAt(0) || 'O'}
+      <div className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 text-slate-950 font-black text-lg flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+          {currentUser?.nome.charAt(0) || 'O'}
+        </div>
+        <div className="min-w-0">
+          <div className="text-xs text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5 truncate">
+            <span>{getCargoLabel(currentUser?.cargo || 'diacono')}</span>
+            {isAdmin && (
+              <span className="px-1.5 py-0.2 rounded text-[9px] bg-slate-900 dark:bg-slate-800 text-amber-300 font-bold border border-slate-700">
+                ADMIN
+              </span>
+            )}
           </div>
-          <div className="min-w-0">
-            <div className="text-xs text-amber-600 dark:text-amber-400 font-extrabold uppercase tracking-wider flex items-center gap-1.5 truncate">
-              <span>{getCargoLabel(currentUser?.cargo || 'diacono')}</span>
-              {isAdmin && (
-                <span className="px-1.5 py-0.2 rounded text-[9px] bg-slate-900 dark:bg-slate-800 text-amber-300 font-bold border border-slate-700">
-                  ADMIN
-                </span>
-              )}
-            </div>
-            <h2 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight truncate">
-              {currentUser?.nome}
-            </h2>
-            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              IPRA • Igreja Presbiteriana Renovada
-            </div>
+          <h2 className="font-black text-base sm:text-lg text-slate-900 dark:text-white leading-tight truncate">
+            {currentUser?.nome}
+          </h2>
+          <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+            IPRA • Igreja Presbiteriana Renovada
           </div>
         </div>
-
-        <button
-          type="button"
-          onClick={onOpenSettings}
-          className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-all shrink-0 border border-slate-200 dark:border-slate-700 shadow-xs"
-          title="Configurações e Perfil"
-        >
-          <SlidersHorizontal className="w-5 h-5 text-amber-500" />
-        </button>
       </div>
 
       {/* CARD PRINCIPAL OPERACIONAL: STATUS DO CULTO */}
-      {cultoAtivo ? (
+      {cultoEmAndamento && cultoAtivo ? (
         <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-5 text-white shadow-lg space-y-4 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -119,30 +107,61 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
           </div>
 
-          {/* Botões Operacionais Primários */}
+          {/* Botões Operacionais Primários — Orientados ao Contexto do Obreiro */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={() => onNavigate('diacono')}
-              className="w-full py-3.5 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all touch-target"
-            >
-              <PenSquare className="w-4 h-4" />
-              <span>Anotar Novo Aviso</span>
-            </button>
+            {isDirigente ? (
+              <>
+                {/* Dirigente: Púlpito em destaque primário */}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('pulpito')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all touch-target relative"
+                >
+                  <Tv className="w-4 h-4" />
+                  <span>Abrir Púlpito do Altar</span>
+                  {totalPendentes > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-black bg-slate-950 text-amber-300 shadow-xs">
+                      {totalPendentes}
+                    </span>
+                  )}
+                </button>
 
-            <button
-              type="button"
-              onClick={() => onNavigate('pulpito')}
-              className="w-full py-3.5 px-4 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-[0.98] text-white border border-slate-700 font-bold text-sm flex items-center justify-center gap-2 transition-all touch-target relative"
-            >
-              <Tv className="w-4 h-4 text-amber-400" />
-              <span>Abrir Púlpito do Altar</span>
-              {totalPendentes > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white shadow-xs">
-                  {totalPendentes}
-                </span>
-              )}
-            </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigate('diacono')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-[0.98] text-white border border-slate-700 font-bold text-sm flex items-center justify-center gap-2 transition-all touch-target"
+                >
+                  <PenSquare className="w-4 h-4 text-amber-400" />
+                  <span>Anotar Novo Aviso</span>
+                </button>
+              </>
+            ) : (
+              <>
+                {/* Diaconia / Recepção / Admin não dirigente: Anotação como ação primária */}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('diacono')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-slate-950 font-black text-sm flex items-center justify-center gap-2 shadow-md shadow-amber-500/20 transition-all touch-target"
+                >
+                  <PenSquare className="w-4 h-4" />
+                  <span>Anotar Novo Aviso</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onNavigate('pulpito')}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-slate-800 hover:bg-slate-750 active:scale-[0.98] text-white border border-slate-700 font-bold text-sm flex items-center justify-center gap-2 transition-all touch-target relative"
+                >
+                  <Tv className="w-4 h-4 text-amber-400" />
+                  <span>Abrir Púlpito do Altar</span>
+                  {totalPendentes > 0 && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white shadow-xs">
+                      {totalPendentes}
+                    </span>
+                  )}
+                </button>
+              </>
+            )}
           </div>
 
           {/* Encerrar Culto — apenas dirigente ou administrador */}

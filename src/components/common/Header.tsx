@@ -33,6 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
   } = useAccessibility();
 
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const cultoEmAndamento = Boolean(cultoAtivo && cultoAtivo.status === 'em_andamento');
 
   return (
     <header className={`${isPulpitMode ? 'bg-black border-zinc-800 text-white' : 'bg-slate-900 text-white border-slate-800'} border-b sticky top-0 z-40 shadow-sm transition-colors duration-200 w-full max-w-full shrink-0 no-swipe`} data-no-swipe="true">
@@ -61,7 +62,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
             <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
-              {cultoAtivo ? (
+              {cultoEmAndamento && cultoAtivo ? (
                 <>
                   <span className="relative flex h-2 w-2 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
@@ -158,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <span>Painel de Ajustes & Sistema</span>
                     </button>
 
-                    {(isAdmin || isDirigente) && onOpenIniciarCultoModal && (
+                    {isAdmin && onOpenIniciarCultoModal && (
                       <button
                         type="button"
                         onClick={() => {

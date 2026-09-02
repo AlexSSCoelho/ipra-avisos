@@ -131,7 +131,6 @@ const AppContent: React.FC = () => {
             <HomeScreen
               onNavigate={(t) => setCurrentTab(t)}
               onOpenIniciarCulto={() => setIsIniciarCultoModalOpen(true)}
-              onOpenSettings={() => setIsSettingsModalOpen(true)}
             />
           </div>
 
